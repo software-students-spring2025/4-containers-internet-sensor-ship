@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Cat Food Monitor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-body">
+                <h5 class="card-title">Today's Feedings</h5>
+                <h2 class="card-text">{{ total_feedings }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-body">
+                <h5 class="card-title">Last Feeding</h5>
+                <h2 class="card-text">
+                    {% if last_feeding %}
+                        {{ last_feeding.strftime('%H:%M') }}
+                    {% else %}
+                        No feedings today
+                    {% endif %}
+                </h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Today's Feeding Timeline</h5>
+    </div>
+    <div class="card-body">
+        <canvas id="feedingChart" 
+                data-timestamps='{{ feeding_events|map(attribute="timestamp")|map("strftime", "%H:%M")|list|tojson }}'
+                data-confidences='{{ feeding_events|map(attribute="confidence")|list|tojson }}'></canvas>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Recent Feedings</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Type</th>
+                        <th>Confidence</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in feeding_events %}
+                    <tr>
+                        <td>{{ event.timestamp.strftime('%H:%M:%S') }}</td>
+                        <td>{{ event.type }}</td>
+                        <td>{{ "%.2f"|format(event.confidence) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Get the chart canvas element
+    const chartCanvas = document.getElementById('feedingChart');
+    
+    // Parse the data from data attributes
+    const timestamps = JSON.parse(chartCanvas.dataset.timestamps);
+    const confidences = JSON.parse(chartCanvas.dataset.confidences);
+    
+    const feedingData = {
+        labels: timestamps,
+        datasets: [{
+            label: 'Feeding Events',
+            data: confidences,
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1
+        }]
+    };
+
+    // Create the chart
+    const ctx = chartCanvas.getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: feedingData,
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 1
+                }
+            }
+        }
+    });
+</script>
+{% endblock %} 

@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=${MONGODB_DBNAME}
+
+  machine-learning-client:
+    build:
+      context: ./machine-learning-client
+      dockerfile: Dockerfile
+    volumes:
+      - ./machine-learning-client:/app
+    environment:
+      - MONGODB_URI=${MONGODB_URI}
+      - MONGODB_DBNAME=${MONGODB_DBNAME}
+      - USE_TEST_MODE=${USE_TEST_MODE}
+      - CAMERA_ID=${CAMERA_ID}
+    depends_on:
+      - mongodb
+
+  web-app:
+    build:
+      context: ./web-app
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./web-app:/app
+    environment:
+      - MONGODB_URI=${MONGODB_URI}
+      - MONGODB_DBNAME=${MONGODB_DBNAME}
+      - SECRET_KEY=${SECRET_KEY}
+    depends_on:
+      - mongodb
+      - machine-learning-client
+
+volumes:
+  mongodb_data: 
