@@ -1,4 +1,4 @@
-name: Web App CI
+name: Machine Learning Client CI
 on:
   pull_request: 
     branches:
@@ -12,18 +12,13 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       working-directory: ./machine-learning-client
-    strategy:
-      matrix:
-        python-version: ["3.9", "3.11"]
     steps:
       - uses: actions/checkout@v4
       - name: Install Python, pipenv and Pipfile packages
         uses: kojoru/prepare-pipenv@v1
         with:
-          python-version: ${{ matrix.python-version }}
-      - name: Make pipenv editable
-        run: |
-          pipenv install -e --dev .
+          python-version: "3.11"
+          working-directory: ./machine-learning-client
       - name: Test with pytest
         run: |
           pipenv --venv
