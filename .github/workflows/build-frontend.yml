@@ -1,0 +1,26 @@
+name: Web App CI
+on:
+  pull_request: 
+    branches:
+      - main
+      - master
+    paths:
+      - "web-app/**"
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./web-app
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python, pipenv and Pipfile packages
+        uses: kojoru/prepare-pipenv@v1
+        with:
+          python-version: "3.11"
+          working-directory: ./web-app
+      - name: Test with pytest
+        run: |
+          pipenv run python -m pytest
+    

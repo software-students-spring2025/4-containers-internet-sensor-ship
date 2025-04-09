@@ -1,0 +1,26 @@
+name: Machine Learning Client CI
+on:
+  pull_request: 
+    branches:
+      - main
+      - master
+    paths:
+      - "machine-learing-client/**"
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      working-directory: ./machine-learning-client
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python, pipenv and Pipfile packages
+        uses: kojoru/prepare-pipenv@v1
+        with:
+          python-version: "3.11"
+          working-directory: ./machine-learning-client
+      - name: Test with pytest
+        run: |
+          pipenv --venv
+          pipenv run python -m pytest
+    

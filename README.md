@@ -1,3 +1,8 @@
+[![Web App CI](https://github.com/software-students-spring2025/4-containers-internet-sensor-ship/actions/workflows/build-frontend.yml/badge.svg)](https://github.com/software-students-spring2025/4-containers-internet-sensor-ship/actions/workflows/build-frontend.yml)
+[![Machine Learning Client](https://github.com/software-students-spring2025/4-containers-internet-sensor-ship/actions/workflows/build-backend.yml/badge.svg)](https://github.com/software-students-spring2025/4-containers-internet-sensor-ship/actions/workflows/build-backend.yml)
+![Lint-free](https://github.com/nyu-software-engineering/containerized-app-exercise/actions/workflows/lint.yml/badge.svg)
+
+
 # Cat Food Monitor 🐱
 
 A containerized system that monitors your cat's eating habits using machine learning and provides a web interface to track feeding patterns.
