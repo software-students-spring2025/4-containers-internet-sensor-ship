@@ -5,7 +5,7 @@ on:
       - main
       - master
     paths:
-      - "machine-learing-client/**"
+      - "machine-learning-client/**"
 
 jobs:
   build-frontend:
