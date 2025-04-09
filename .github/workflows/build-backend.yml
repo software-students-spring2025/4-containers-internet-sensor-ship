@@ -22,9 +22,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           working-directory: ./machine-learning-client
-      - name: Make pipenv editable
-        run: |
-          pipenv install -e --dev .
       - name: Test with pytest
         run: |
           pipenv --venv

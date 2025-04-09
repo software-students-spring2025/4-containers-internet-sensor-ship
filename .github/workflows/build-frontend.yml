@@ -23,11 +23,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           working-directory: ./web-app
-      - name: Make pipenv editable
-        run: |
-          pipenv install -e --dev .
       - name: Test with pytest
         run: |
-          pipenv --venv
           pipenv run python -m pytest
     
