@@ -10,10 +10,21 @@ from dotenv import load_dotenv
 from datetime import datetime
 import pytz
 
-# Load environment variables from .env file at the project root
-# Assuming .env is in the root directory, adjust path if needed
-dotenv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env')
-load_dotenv(dotenv_path=dotenv_path)
+# Load environment variables from .env file
+# Try multiple possible locations for .env
+possible_dotenv_paths = [
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'),  # web-app/.env
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env'),  # project root .env
+    '.env'  # current directory
+]
+
+for dotenv_path in possible_dotenv_paths:
+    if os.path.exists(dotenv_path):
+        load_dotenv(dotenv_path=dotenv_path)
+        print(f"Loaded environment from {dotenv_path}")
+        break
+else:
+    print("Warning: No .env file found. Using environment variables directly.")
 
 # Define User class (can be here or in a models.py)
 class User(UserMixin):
@@ -25,20 +36,38 @@ class User(UserMixin):
 # Helper function for UTC time
 def get_utc_time():
     """Get current time in UTC"""
-    return datetime.utcnow().replace(tzinfo=pytz.utc) # Make timezone aware
+    return datetime.utcnow() # Keep as naive datetime for MongoDB compatibility
 
 def create_app(test_config=None):
     '''
     The app factory for creating instances of the app
     '''
-    app = Flask(__name__, instance_relative_config=True)
+    # Determine the template folder path - it should be in the parent directory of the src folder
+    template_folder = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'templates')
+    static_folder = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')
+    
+    # Create app with explicit template path
+    app = Flask(__name__, 
+                template_folder=template_folder,
+                static_folder=static_folder,
+                instance_relative_config=True)
+
+    # Print paths for debugging
+    print(f"Template folder path: {template_folder}")
+    print(f"Static folder path: {static_folder}")
+    print(f"Working directory: {os.getcwd()}")
 
     # --- Configuration ---
+    # Use environment variables with fallbacks
     app.config.from_mapping(
-        SECRET_KEY=os.getenv('SECRET_KEY', 'dev-secret-key'), # Provide a default for dev
-        MONGODB_URI=os.getenv('MONGODB_URI'),
-        MONGODB_DBNAME=os.getenv('MONGODB_DBNAME')
+        SECRET_KEY=os.getenv('SECRET_KEY', 'dev-secret-key'),
+        MONGODB_URI=os.getenv('MONGODB_URI', 'mongodb://localhost:27017/'),
+        MONGODB_DBNAME=os.getenv('MONGODB_DBNAME', 'cat_feeder')
     )
+
+    # Print config for debugging (excluding sensitive info)
+    print(f"MongoDB URI configured (showing only prefix): {app.config['MONGODB_URI'].split('@')[0]}...")
+    print(f"MongoDB DB name: {app.config['MONGODB_DBNAME']}")
 
     if test_config is None:
         # Load the instance config, if it exists, when not testing
@@ -53,52 +82,52 @@ def create_app(test_config=None):
     except OSError:
         pass # Already exists
 
-    if not app.config['MONGODB_URI'] or not app.config['MONGODB_DBNAME']:
-        raise ValueError("MONGODB_URI and MONGODB_DBNAME must be set in environment variables or config.")
-
-    # --- Extensions ---
-    mongo_client = MongoClient(app.config['MONGODB_URI'])
-    app.db = mongo_client[app.config['MONGODB_DBNAME']] # Attach db client to app context
+    try:
+        # --- Extensions ---
+        mongo_client = MongoClient(app.config['MONGODB_URI'])
+        # Test the connection
+        mongo_client.admin.command('ping')
+        print("MongoDB connection successful!")
+        app.db = mongo_client[app.config['MONGODB_DBNAME']]
+    except Exception as e:
+        print(f"MongoDB connection error: {e}")
+        # Don't raise here - provide a more helpful error but allow app to start
+        # This helps with debugging in Docker
 
     login_manager = LoginManager()
     login_manager.init_app(app)
-    # Specify the login view using the blueprint name 'routes' and the function name 'login'
     login_manager.login_view = 'routes.login'
 
     # --- User Loader ---
     @login_manager.user_loader
     def load_user(user_id):
         try:
-            # Access db via the app context
             user_data = app.db.users.find_one({'_id': ObjectId(user_id)})
             if user_data:
                 return User(user_data)
         except Exception as e:
-            app.logger.error(f"Error loading user {user_id}: {e}") # Log errors
+            app.logger.error(f"Error loading user {user_id}: {e}")
         return None
 
     # --- Jinja Filter ---
     @app.template_filter('strftime')
     def _jinja2_filter_datetime(date, fmt='%Y-%m-%d %H:%M:%S'):
-        # Ensure date is timezone-aware if possible, otherwise assume UTC
         if isinstance(date, datetime):
-            if date.tzinfo is None:
-                date = date.replace(tzinfo=pytz.utc) # Assume UTC if naive
-            # Example: Convert to a specific timezone if needed for display
-            # ny_timezone = pytz.timezone('America/New_York')
-            # date_local = date.astimezone(ny_timezone)
-            # return date_local.strftime(fmt)
-            return date.strftime(fmt) # Keep as UTC for now unless specified otherwise
-        return date # Return as is if not a datetime object
+            return date.strftime(fmt) 
+        return date
 
     # --- Blueprints ---
-    # Import and register the blueprint from routes.py
-    from . import routes # Use relative import
-    app.register_blueprint(routes.routes) # Assuming the blueprint instance is named 'routes' in routes.py
+    try:
+        from . import routes
+        app.register_blueprint(routes.routes)
+        print("Routes blueprint registered successfully")
+    except Exception as e:
+        print(f"Error registering routes blueprint: {e}")
 
-    # --- App Context ---
-    # You might want to push an application context for certain operations
-    # Or use Flask-PyMongo extension which handles context better
+    # Add a basic route for testing
+    @app.route('/health')
+    def health_check():
+        return {"status": "ok", "message": "App is running"}
 
     return app
 

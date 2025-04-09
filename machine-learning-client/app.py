@@ -19,7 +19,7 @@ db = mongo_client[os.getenv('MONGODB_DBNAME')]
 
 CASCADE_PATH = 'models/cascades'
 CONFIDENCE_THRESHOLD = 0.5
-DETECTION_COOLDOWN = 60  # Cooldown period in seconds
+DETECTION_COOLDOWN = 30  # Cooldown period in seconds
 
 def get_utc_time():
     """Get current time in UTC"""

@@ -5,7 +5,7 @@ be replicated for both testing and running the app
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_user, login_required, logout_user
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 import requests
 
@@ -105,22 +105,9 @@ def detect_cat():
         
         ml_response.raise_for_status() # Raise exception for bad status codes (4xx or 5xx)
             
-        # Get detection result
-        detection_result = ml_response.json()
-        
-        # Only save to database if cat detected AND the ML service didn't log it
-        if detection_result.get('detected', False) and not detection_result.get('logged', True):
-            event = {
-                'timestamp': get_utc_time(), # Use imported helper
-                'type': 'feeding',
-                'confidence': detection_result.get('confidence', 0.8),
-                'image': image_data
-            }
-            # Access db via current_app proxy
-            current_app.db.feeding_events.insert_one(event)
-            detection_result['logged'] = True # Assume logged after successful insertion
-        
-        return jsonify(detection_result)
+        # Simply pass through the ML container's response
+        # The ML container is solely responsible for logging detections to the database
+        return jsonify(ml_response.json())
         
     except requests.exceptions.RequestException as e:
         current_app.logger.error(f"Error communicating with ML container: {e}")
