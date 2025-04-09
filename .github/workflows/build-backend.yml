@@ -1,4 +1,4 @@
-name: Web App CI
+name: Machine Learning Client CI
 on:
   pull_request: 
     branches:
@@ -21,6 +21,7 @@ jobs:
         uses: kojoru/prepare-pipenv@v1
         with:
           python-version: ${{ matrix.python-version }}
+          working-directory: ./machine-learning-client
       - name: Make pipenv editable
         run: |
           pipenv install -e --dev .
