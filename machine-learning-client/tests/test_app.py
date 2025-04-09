@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from datetime import datetime
-from main import CatDetector
+from app import CatDetector
 
 
 @pytest.fixture
