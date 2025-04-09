@@ -10,4 +10,7 @@ routes = Blueprint("routes", __name__)
 
 @routes.route("/")
 def index():
+    '''
+    The get route for the main page
+    '''
     return "Hello World!"
