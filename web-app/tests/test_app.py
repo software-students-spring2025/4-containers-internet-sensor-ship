@@ -1,5 +1,6 @@
 import pytest
 
+
 # Placeholder test to be better defined later
-def test_get_index(client):
-    assert client.get('/').status_code == 200
+def test_app_running(client):
+    assert client.get("/health").status_code == 200

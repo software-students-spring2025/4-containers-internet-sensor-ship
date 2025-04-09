@@ -6,8 +6,21 @@ name = "pypi"
 [packages]
 pylint = "*"
 black = "*"
+flask = "*"
+werkzeug = "*"
+numpy = "*"
+opencv-python = "*"
+python-dotenv = "*"
+requests = "*"
+pymongo = "*"
+pytz = "*"
 
 [dev-packages]
+black = "*"
+pylint = "*"
+pytest = "*"
+pytest-cov = "*"
+pytest-flask = "*"
 
 [requires]
 python_version = "3.10"

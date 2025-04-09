@@ -8,10 +8,11 @@ on:
       - "machine-learning-client/**"
 
 jobs:
-  build-frontend:
+  build-backend:
     runs-on: ubuntu-latest
     defaults:
-      working-directory: ./machine-learning-client
+      run:
+        working-directory: ./machine-learning-client
     steps:
       - uses: actions/checkout@v4
       - name: Install Python, pipenv and Pipfile packages
@@ -23,6 +24,5 @@ jobs:
         run: |
           export MONGODB_URI="NONE"
           export MONGODB_DBNAME="NONE"
-          pipenv --venv
           pipenv run python -m pytest
     

@@ -1,0 +1,429 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Cat Food Monitor{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Live Camera Feed</h5>
+            </div>
+            <div class="card-body text-center">
+                <div id="camera-container" class="mb-3 position-relative">
+                    <video id="webcam" width="100%" height="auto" autoplay playsinline></video>
+                    <canvas id="camera-canvas" class="position-absolute top-0 start-0" style="width: 100%; height: 100%; display: none;"></canvas>
+                    <div id="detection-border" class="position-absolute top-0 start-0 w-100 h-100" 
+                         style="border: 8px solid transparent; pointer-events: none; transition: all 0.2s ease;"></div>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <button id="start-camera" class="btn btn-primary">Start Camera</button>
+                    <button id="enable-detection" class="btn btn-success" disabled>Enable Detection</button>
+                    <button id="stop-camera" class="btn btn-danger" disabled>Stop Camera</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-body">
+                <h5 class="card-title">Today's Feedings</h5>
+                <h2 class="card-text" id="total-feedings">{{ total_feedings }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-body">
+                <h5 class="card-title">Last Feeding</h5>
+                <h2 class="card-text" id="last-feeding">
+                    {% if last_feeding %}
+                        {{ last_feeding.strftime('%H:%M') }}
+                    {% else %}
+                        No feedings today
+                    {% endif %}
+                </h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Today's Feeding Timeline</h5>
+    </div>
+    <div class="card-body">
+        <canvas id="feedingChart" 
+                data-timestamps='{{ feeding_events|map(attribute="timestamp")|map("strftime", "%H:%M")|list|tojson }}'
+                data-confidences='{{ feeding_events|map(attribute="confidence")|list|tojson }}'></canvas>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Recent Feedings</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Type</th>
+                        <th>Confidence</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in feeding_events %}
+                    <tr>
+                        <td class="feeding-time">{{ event.timestamp.strftime('%H:%M:%S') }}</td>
+                        <td>{{ event.type }}</td>
+                        <td>{{ "%.2f"|format(event.confidence) }}</td>
+                        <td>
+                            {% if event.image %}
+                            <img src="{{ event.image }}" alt="Feeding event" width="100" height="75" class="img-thumbnail">
+                            {% else %}
+                            No image
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Get the chart canvas element
+    const chartCanvas = document.getElementById('feedingChart');
+    
+    // Parse the data from data attributes
+    const timestamps = JSON.parse(chartCanvas.dataset.timestamps);
+    const confidences = JSON.parse(chartCanvas.dataset.confidences);
+    
+    // Sort the data by timestamps (convert to date objects for proper sorting)
+    const sortedData = timestamps.map((time, index) => {
+        // Create date object for time string
+        const today = new Date();
+        const [hours, minutes] = time.split(':');
+        today.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+        
+        return {
+            timestamp: today,
+            displayTime: time,
+            confidence: confidences[index]
+        };
+    }).sort((a, b) => a.timestamp - b.timestamp);
+    
+    // Extract sorted arrays
+    const sortedTimestamps = sortedData.map(d => d.displayTime);
+    const sortedConfidences = sortedData.map(d => d.confidence);
+    
+    const feedingData = {
+        labels: sortedTimestamps,
+        datasets: [{
+            label: 'Detection Confidence',
+            data: sortedConfidences,
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1
+        }]
+    };
+
+    // Create the chart
+    const ctx = chartCanvas.getContext('2d');
+    window.feedingChart = new Chart(ctx, {
+        type: 'line',
+        data: feedingData,
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Cat Feeding Detection Confidence Over Time',
+                    font: {
+                        size: 16
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `Confidence: ${context.parsed.y.toFixed(2)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Time of Day'
+                    },
+                    reverse: false // Ensure time runs forward
+                },
+                y: {
+                    beginAtZero: true,
+                    max: 1,
+                    title: {
+                        display: true,
+                        text: 'Detection Confidence (0-1)'
+                    }
+                }
+            }
+        }
+    });
+
+    // Camera handling
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('camera-canvas');
+    const detectionBorder = document.getElementById('detection-border');
+    const startCameraBtn = document.getElementById('start-camera');
+    const enableDetectionBtn = document.getElementById('enable-detection');
+    const stopCameraBtn = document.getElementById('stop-camera');
+
+    let stream = null;
+    let detectionInterval = null;
+
+    // Start camera button
+    startCameraBtn.addEventListener('click', async () => {
+        try {
+            // This will trigger the browser permission prompt
+            stream = await navigator.mediaDevices.getUserMedia({ 
+                video: true, 
+                audio: false 
+            });
+            video.srcObject = stream;
+            
+            // Make canvas match video dimensions
+            video.onloadedmetadata = () => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+            };
+            
+            startCameraBtn.disabled = true;
+            enableDetectionBtn.disabled = false;
+            stopCameraBtn.disabled = false;
+        } catch (err) {
+            console.error('Error accessing camera:', err);
+            alert('Error accessing camera. Please make sure you have granted camera permissions.');
+        }
+    });
+
+    // Enable detection button
+    enableDetectionBtn.addEventListener('click', () => {
+        if (detectionInterval) {
+            // Disable detection
+            clearInterval(detectionInterval);
+            detectionInterval = null;
+            enableDetectionBtn.textContent = 'Enable Detection';
+            enableDetectionBtn.classList.replace('btn-danger', 'btn-success');
+            detectionBorder.style.borderColor = 'transparent';
+        } else {
+            // Enable detection
+            enableDetectionBtn.textContent = 'Disable Detection';
+            enableDetectionBtn.classList.replace('btn-success', 'btn-danger');
+            
+            // Start detection loop
+            detectionInterval = setInterval(detectCat, 2000); // Check every 2 seconds
+        }
+    });
+
+    // Stop camera button
+    stopCameraBtn.addEventListener('click', () => {
+        if (detectionInterval) {
+            clearInterval(detectionInterval);
+            detectionInterval = null;
+        }
+        
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            video.srcObject = null;
+        }
+        
+        startCameraBtn.disabled = false;
+        enableDetectionBtn.disabled = true;
+        stopCameraBtn.disabled = true;
+        enableDetectionBtn.textContent = 'Enable Detection';
+        enableDetectionBtn.classList.replace('btn-danger', 'btn-success');
+        detectionBorder.style.borderColor = 'transparent';
+    });
+
+    // Function to capture image and detect cat
+    function detectCat() {
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Convert canvas to base64 image
+        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+        
+        // Send image to server for detection
+        fetch('/api/detect-cat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ image: imageData })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Update UI based on detection result
+            if (data.detected) {
+                // Make border more obvious - thicker, with a glow effect and brighter blue
+                detectionBorder.style.borderColor = '#0d6efd';
+                detectionBorder.style.borderWidth = '12px';
+                detectionBorder.style.boxShadow = '0 0 15px rgba(13, 110, 253, 0.8)';
+                
+                // After 1 second, fade out the border
+                setTimeout(() => {
+                    detectionBorder.style.borderColor = 'transparent';
+                    detectionBorder.style.borderWidth = '8px';
+                    detectionBorder.style.boxShadow = 'none';
+                    
+                    // Update feeding data without page reload
+                    updateFeedingData();
+                }, 1500); // Increased to 1.5 seconds to see the highlight better
+            }
+        })
+        .catch(error => {
+            console.error('Error during cat detection:', error);
+        });
+    }
+
+    // Improved function to convert server time to local time
+    function formatLocalTime(timeString, includeSeconds = true) {
+        // Handle ISO format date string with timezone info
+        if (timeString.includes('T') || timeString.includes('-')) {
+            // Parse the ISO timestamp with timezone info
+            const date = new Date(timeString);
+            
+            // Format using 12-hour clock with AM/PM
+            let options = { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: true
+            };
+            
+            if (includeSeconds) {
+                options.second = '2-digit';
+            }
+            
+            return date.toLocaleTimeString([], options);
+        } else {
+            // Handle simple time strings (should be rare with updated backend)
+            const parts = timeString.split(':');
+            const hours = parseInt(parts[0], 10);
+            const minutes = parseInt(parts[1], 10);
+            const seconds = parts.length > 2 ? parseInt(parts[2], 10) : 0;
+            
+            // Create a date object using the current date
+            const date = new Date();
+            date.setHours(hours, minutes, seconds, 0);
+            
+            // Format using 12-hour clock with AM/PM
+            let options = { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: true
+            };
+            
+            if (includeSeconds) {
+                options.second = '2-digit';
+            }
+            
+            return date.toLocaleTimeString([], options);
+        }
+    }
+
+    // Find all time elements on page load and convert them
+    document.addEventListener('DOMContentLoaded', () => {
+        // Convert the last feeding time
+        const lastFeedingElement = document.getElementById('last-feeding');
+        if (lastFeedingElement && lastFeedingElement.textContent.trim() !== 'No feedings today') {
+            lastFeedingElement.textContent = formatLocalTime(lastFeedingElement.textContent.trim(), false);
+        }
+        
+        // Convert times in the feeding table
+        document.querySelectorAll('.feeding-time').forEach(el => {
+            el.textContent = formatLocalTime(el.textContent.trim());
+        });
+        
+        // Update chart labels to local time
+        if (window.feedingChart && window.feedingChart.data.labels) {
+            window.feedingChart.data.labels = window.feedingChart.data.labels.map(time => 
+                formatLocalTime(time, false)
+            );
+            window.feedingChart.update();
+        }
+    });
+
+    // Update the updateFeedingData function to use local time
+    function updateFeedingData() {
+        // Fetch the latest feeding events
+        fetch('/api/feeding-events')
+            .then(response => response.json())
+            .then(data => {
+                // Update stats
+                if (document.getElementById('total-feedings')) {
+                    document.getElementById('total-feedings').textContent = data.total_feedings;
+                }
+                
+                if (document.getElementById('last-feeding') && data.last_feeding) {
+                    document.getElementById('last-feeding').textContent = 
+                        data.last_feeding ? formatLocalTime(data.last_feeding, false) : 'No feedings today';
+                }
+                
+                // Update the table with latest events
+                const tableBody = document.querySelector('.table tbody');
+                if (tableBody && data.feeding_events.length > 0) {
+                    // Clear existing rows
+                    tableBody.innerHTML = '';
+                    
+                    // Add new rows with local time
+                    data.feeding_events.forEach(event => {
+                        const localTime = formatLocalTime(event.timestamp);
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td class="feeding-time">${localTime}</td>
+                            <td>${event.type}</td>
+                            <td>${event.confidence.toFixed(2)}</td>
+                            <td>${event.image ? 
+                                `<img src="${event.image}" alt="Feeding event" width="100" height="75" class="img-thumbnail">` : 
+                                'No image'}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                }
+                
+                // Update chart if it exists
+                if (window.feedingChart && data.timestamps && data.confidences) {
+                    // Convert timestamps to local time and sort the data
+                    const chartData = data.timestamps.map((isoTime, index) => {
+                        // Create a date from ISO string with timezone
+                        const date = new Date(isoTime);
+                        
+                        return {
+                            timestamp: isoTime,
+                            displayTime: formatLocalTime(isoTime, false),
+                            confidence: data.confidences[index],
+                            // Store milliseconds for sorting
+                            timeValue: date.getTime()
+                        };
+                    });
+                    
+                    // Sort by the timestamp value (milliseconds)
+                    chartData.sort((a, b) => a.timeValue - b.timeValue);
+                    
+                    window.feedingChart.data.labels = chartData.map(d => d.displayTime);
+                    window.feedingChart.data.datasets[0].data = chartData.map(d => d.confidence);
+                    window.feedingChart.update();
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching feeding data:', error);
+            });
+    }
+</script>
+{% endblock %} 
