@@ -12,15 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       working-directory: ./machine-learning-client
-    strategy:
-      matrix:
-        python-version: ["3.9", "3.11"]
     steps:
       - uses: actions/checkout@v4
       - name: Install Python, pipenv and Pipfile packages
         uses: kojoru/prepare-pipenv@v1
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.10"
           working-directory: ./machine-learning-client
       - name: Test with pytest
         run: |
