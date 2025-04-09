@@ -36,6 +36,10 @@ class User(UserMixin):
         self.username = user_data["username"]
         # Add other user attributes if needed
 
+def filter_datetime(date, fmt="%Y-%m-%d %H:%M:%S"):
+    if isinstance(date, datetime):
+        return date.strftime(fmt)
+    return date
 
 # Helper function for UTC time
 def get_utc_time():
@@ -123,9 +127,7 @@ def create_app(test_config=None):
     # --- Jinja Filter ---
     @app.template_filter("strftime")
     def _jinja2_filter_datetime(date, fmt="%Y-%m-%d %H:%M:%S"):
-        if isinstance(date, datetime):
-            return date.strftime(fmt)
-        return date
+        filter_datetime(date, fmt)
 
     # --- Blueprints ---
     try:

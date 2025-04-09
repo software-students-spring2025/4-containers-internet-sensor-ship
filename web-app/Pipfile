@@ -10,16 +10,16 @@ flask = "*"
 flask-login = "*"
 python-dotenv = "*"
 requests = "*"
-pytz = "*"
 gunicorn = "*"
 pymongo = "*"
-bson = "*"
+pytz = "*"
 
 [dev-packages]
 pytest = "*"
 pytest-flask = "*"
 pylint = "*"
 black = "*"
+coverage = "*"
 
 [requires]
 python_version = "3.10"

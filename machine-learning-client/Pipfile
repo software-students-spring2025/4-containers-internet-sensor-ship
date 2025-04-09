@@ -21,6 +21,7 @@ pylint = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-flask = "*"
+coverage = "*"
 
 [requires]
 python_version = "3.10"
