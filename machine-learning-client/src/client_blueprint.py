@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Blueprint
 import numpy as np
 import cv2
 import base64
@@ -12,7 +12,7 @@ import sys
 
 load_dotenv()
 
-app = Flask(__name__)
+ml_client = Blueprint("ml_client", __name__)
 
 mongo_client = MongoClient(os.getenv("MONGODB_URI"))
 db = mongo_client[os.getenv("MONGODB_DBNAME")]
@@ -150,7 +150,7 @@ def preprocess_image(image_data):
     return img
 
 
-@app.route("/detect", methods=["POST"])
+@ml_client.route("/detect", methods=["POST"])
 def detect():
     """Endpoint to detect cats in images"""
     if "image" not in request.json:
@@ -217,7 +217,7 @@ def detect():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/health", methods=["GET"])
+@ml_client.route("/health", methods=["GET"])
 def health_check():
     """Simple health check endpoint"""
     return jsonify(
@@ -226,8 +226,3 @@ def health_check():
             "ml_model": "active" if cat_cascade is not None else "fallback",
         }
     )
-
-
-if __name__ == "__main__":
-    print("Starting Cat Detection API server...")
-    app.run(host="0.0.0.0", port=5000)
