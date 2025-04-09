@@ -6,10 +6,13 @@ name = "pypi"
 [packages]
 pylint = "*"
 black = "*"
+flask = "*"
 
 [dev-packages]
 pytest = "*"
 pytest-flask = "*"
+pylint = "*"
+black = "*"
 
 [requires]
 python_version = "3.10"
