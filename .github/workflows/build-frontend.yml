@@ -11,7 +11,8 @@ jobs:
   build-frontend:
     runs-on: ubuntu-latest
     defaults:
-      working-directory: ./web-app
+      run:
+        working-directory: ./web-app
     strategy:
       matrix:
         python-version: ["3.9", "3.11"]
