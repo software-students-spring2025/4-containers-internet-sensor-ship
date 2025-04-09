@@ -12,7 +12,7 @@ import sys
 
 load_dotenv()
 
-ml_client = Blueprint("ml_client", __name__)
+client_blueprint = Blueprint("client_blueprint", __name__)
 
 mongo_client = MongoClient(os.getenv("MONGODB_URI"))
 db = mongo_client[os.getenv("MONGODB_DBNAME")]
@@ -150,7 +150,7 @@ def preprocess_image(image_data):
     return img
 
 
-@ml_client.route("/detect", methods=["POST"])
+@client_blueprint.route("/detect", methods=["POST"])
 def detect():
     """Endpoint to detect cats in images"""
     if "image" not in request.json:
@@ -217,7 +217,7 @@ def detect():
         return jsonify({"error": str(e)}), 500
 
 
-@ml_client.route("/health", methods=["GET"])
+@client_blueprint.route("/health", methods=["GET"])
 def health_check():
     """Simple health check endpoint"""
     return jsonify(

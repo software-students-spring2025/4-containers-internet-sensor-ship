@@ -1,13 +1,14 @@
 from flask import Flask
+from . import client_blueprint
 
 def create_app(config=None):
     app = Flask(__name__)
 
     try:
-        from src.client_blueprint import ml_client
-        app.register_blueprint(ml_client, port=5000)
+        print(client_blueprint.client_blueprint.name)
+        app.register_blueprint(client_blueprint.client_blueprint, port=5000)
     except Exception as e:
-        print(f"Error ")
+        print(client_blueprint.client_blueprint.name)
         print(f"Error registering routes blueprint: {e}")
 
     return app

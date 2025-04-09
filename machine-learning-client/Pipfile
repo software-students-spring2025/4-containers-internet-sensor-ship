@@ -10,9 +10,9 @@ flask = "*"
 werkzeug = "*"
 numpy = "*"
 opencv-python = "*"
-pymongo = "*"
 python-dotenv = "*"
 requests = "*"
+pymongo = "*"
 pytz = "*"
 
 [dev-packages]

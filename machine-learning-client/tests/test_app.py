@@ -1,6 +1,9 @@
 import pytest
 
 def test_app_running(client):
+    """
+    Just makes sure the app is running at all
+    """
     assert client.get("/health").status_code == 200
 
 '''
