@@ -5,13 +5,14 @@ on:
       - main
       - master
     paths:
-      - "machine-learing-client/**"
+      - "machine-learning-client/**"
 
 jobs:
   build-frontend:
     runs-on: ubuntu-latest
     defaults:
-      working-directory: ./machine-learning-client
+      run:
+        working-directory: ./machine-learning-client
     steps:
       - uses: actions/checkout@v4
       - name: Install Python, pipenv and Pipfile packages
@@ -21,6 +22,5 @@ jobs:
           working-directory: ./machine-learning-client
       - name: Test with pytest
         run: |
-          pipenv --venv
           pipenv run python -m pytest
     
