@@ -14,12 +14,13 @@ services:
     build:
       context: ./machine-learning-client
       dockerfile: Dockerfile
+    ports:
+      - "5001:5000"
     volumes:
       - ./machine-learning-client:/app
     environment:
       - MONGODB_URI=${MONGODB_URI}
       - MONGODB_DBNAME=${MONGODB_DBNAME}
-      - USE_TEST_MODE=${USE_TEST_MODE}
       - CAMERA_ID=${CAMERA_ID}
     depends_on:
       - mongodb

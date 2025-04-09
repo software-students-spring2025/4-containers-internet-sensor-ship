@@ -1,22 +1,35 @@
-FROM python:3.8-slim
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
-    && rm -rf /var/lib/apt/lists/*
+FROM python:3.9-slim
 
 WORKDIR /app
 
-# Copy requirements first to leverage Docker cache
+# Install system dependencies for OpenCV and downloading
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    wget \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create models directory
+RUN mkdir -p models/cascades
+
+# Download OpenCV's pre-trained Haar cascade for face detection (as example)
+RUN wget -O models/cascades/haarcascade_frontalface_default.xml \
+    https://raw.githubusercontent.com/opencv/opencv/master/data/haarcascades/haarcascade_frontalface_default.xml
+
+# Download a cat detector cascade from opencv-extra
+RUN wget -O models/cascades/haarcascade_frontalcatface.xml \
+    https://raw.githubusercontent.com/opencv/opencv/master/data/haarcascades/haarcascade_frontalcatface.xml
+
+# Download the extended version too
+RUN wget -O models/cascades/haarcascade_frontalcatface_extended.xml \
+    https://raw.githubusercontent.com/opencv/opencv/master/data/haarcascades/haarcascade_frontalcatface_extended.xml
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
 COPY . .
 
-# Create a directory for the model
-RUN mkdir -p /app/models
-
-# Run the application
-CMD ["python", "main.py"] 
+# Make sure the Flask app is the entrypoint
+CMD ["python", "app.py"] 
