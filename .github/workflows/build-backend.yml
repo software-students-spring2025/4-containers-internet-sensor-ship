@@ -8,7 +8,7 @@ on:
       - "machine-learning-client/**"
 
 jobs:
-  build-frontend:
+  build-backend:
     runs-on: ubuntu-latest
     defaults:
       run:
