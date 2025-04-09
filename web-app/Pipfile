@@ -12,6 +12,8 @@ python-dotenv = "*"
 requests = "*"
 pytz = "*"
 gunicorn = "*"
+pymongo = "*"
+bson = "*"
 
 [dev-packages]
 pytest = "*"
