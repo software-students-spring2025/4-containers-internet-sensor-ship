@@ -21,6 +21,8 @@ jobs:
           working-directory: ./machine-learning-client
       - name: Test with pytest
         run: |
+          export MONGODB_URI="NONE"
+          export MONGODB_DBNAME="NONE"
           pipenv --venv
           pipenv run python -m pytest
     
