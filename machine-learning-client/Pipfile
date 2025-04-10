@@ -4,23 +4,22 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-pylint = "*"
-black = "*"
-flask = "*"
-werkzeug = "*"
-numpy = "*"
-opencv-python = "*"
-python-dotenv = "*"
-requests = "*"
-pymongo = "*"
-pytz = "*"
+flask = "==2.3.3"
+werkzeug = "==2.3.7"
+numpy = "==1.24.3"
+opencv-python = "==4.8.0.76"
+python-dotenv = "==1.0.0"
+requests = "==2.31.0"
+pymongo = "==4.5.0"
+pytz = "==2023.3"
 
 [dev-packages]
-black = "*"
-pylint = "*"
-pytest = "*"
-pytest-cov = "*"
-pytest-flask = "*"
+black = "==23.7.0"
+pylint = "==2.17.5"
+pytest = "==7.4.2"
+pytest-cov = "==4.1.0"
+pytest-flask = "==1.3.0"
+tomli = "==2.0.1"
 
 [requires]
-python_version = "3.10"
+python_version = "3.12"
