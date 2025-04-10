@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -9,7 +9,21 @@ RUN apt-get update && apt-get install -y \
     wget \
     curl \
     git \
+    build-essential \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY Pipfile ./
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install flask==2.2.3 \
+                werkzeug==2.2.3 \
+                numpy==1.26.4 \
+                opencv-python==4.8.0.76 \
+                python-dotenv==1.0.0 \
+                requests==2.31.0 \
+                pymongo==4.5.0 \
+                pytz==2023.3
 
 # Create models directory
 RUN mkdir -p models/cascades
@@ -26,10 +40,11 @@ RUN wget -O models/cascades/haarcascade_frontalcatface.xml \
 RUN wget -O models/cascades/haarcascade_frontalcatface_extended.xml \
     https://raw.githubusercontent.com/opencv/opencv/master/data/haarcascades/haarcascade_frontalcatface_extended.xml
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
+# Copy the application code
 COPY . .
 
+# Set Python path to include src directory
+ENV PYTHONPATH=/app
+
 # Make sure the Flask app is the entrypoint
-CMD ["python", "app.py"] 
+CMD ["python", "src/app.py"] 

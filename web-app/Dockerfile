@@ -1,12 +1,18 @@
-FROM python:3.8-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
-# Copy requirements first to leverage Docker cache
-COPY requirements.txt Pipfile Pipfile.lock ./
-# Ensure pip is up-to-date and install requirements
+# Install dependencies
+COPY Pipfile ./
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install flask==2.2.3 \
+                flask-login==0.6.2 \
+                werkzeug==2.2.3 \
+                python-dotenv==1.0.0 \
+                requests==2.31.0 \
+                pytz==2023.3 \
+                gunicorn==21.2.0 \
+                pymongo==4.5.0
 
 # Create .env file with defaults if none exists
 RUN echo "SECRET_KEY=dev-secret-key-docker" > .env && \
@@ -18,6 +24,7 @@ COPY src/ ./src/
 COPY templates/ ./templates/
 COPY tests/ ./tests/
 COPY wsgi.py ./
+COPY gunicorn.conf.py ./
 # Create empty static folder if it doesn't exist
 RUN mkdir -p static
 
@@ -35,4 +42,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 
 # Run the application using Gunicorn with worker timeout
 # Point to wsgi.py instead of trying to import create_app directly
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--timeout", "120", "--workers", "1", "--log-level", "debug", "wsgi:application"] 
+CMD ["gunicorn", "--config", "/app/gunicorn.conf.py", "wsgi:application"] 

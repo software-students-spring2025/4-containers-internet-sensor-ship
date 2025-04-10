@@ -1,18 +1,18 @@
 from flask import Flask
-from . import client_blueprint
+import src.client_blueprint as client_blueprint
 
 def create_app(config=None):
     app = Flask(__name__)
 
     try:
         print(client_blueprint.client_blueprint.name)
-        app.register_blueprint(client_blueprint.client_blueprint, port=5000)
+        app.register_blueprint(client_blueprint.client_blueprint)
     except Exception as e:
-        print(client_blueprint.client_blueprint.name)
         print(f"Error registering routes blueprint: {e}")
 
     return app
 
 if __name__ == "__main__":
     print("Starting Cat Detection API server...")
-    create_app()
+    app = create_app()
+    app.run(host='0.0.0.0', port=5000)
