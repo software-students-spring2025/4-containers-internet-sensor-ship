@@ -1,0 +1,12 @@
+[MASTER]
+disable=
+    C0111, # missing-docstring
+    import-error, # E0401
+    trailing-whitespace, # C0303
+    
+[FORMAT]
+max-line-length=100
+
+[DESIGN]
+max-locals=25 # Allow more local variables
+max-returns=10 # Allow more return statements 
