@@ -4,13 +4,11 @@ import numpy as np
 
 import pytest
 
-# Define a helper function to mock imports
 def mock_module(name):
     if name not in sys.modules:
         sys.modules[name] = MagicMock()
     return sys.modules[name]
 
-# Mock all required external modules
 mock_module('cv2')
 mock_module('pymongo')
 mock_module('tensorflow')
@@ -19,11 +17,9 @@ mock_module('tensorflow.keras.models')
 mock_module('dotenv')
 mock_module('python-dotenv')
 
-# Special mock for dotenv load_dotenv function
 dotenv = mock_module('dotenv')
 dotenv.load_dotenv = MagicMock()
 
-# Import after mocking
 from src.app import create_app
 
 
