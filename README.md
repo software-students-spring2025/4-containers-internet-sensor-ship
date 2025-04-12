@@ -7,9 +7,6 @@
 
 A containerized system that monitors your cat's eating habits using machine learning and provides a web interface to track feeding patterns.
 
-[![Machine Learning Client CI](https://github.com/yourusername/4-containers-internet-sensor-ship/actions/workflows/ml-client-ci.yml/badge.svg)](https://github.com/yourusername/4-containers-internet-sensor-ship/actions/workflows/ml-client-ci.yml)
-[![Web App CI](https://github.com/yourusername/4-containers-internet-sensor-ship/actions/workflows/web-app-ci.yml/badge.svg)](https://github.com/yourusername/4-containers-internet-sensor-ship/actions/workflows/web-app-ci.yml)
-
 ## Overview
 
 This system consists of three main components:
@@ -18,30 +15,22 @@ This system consists of three main components:
 2. **Web Application**: Provides a dashboard to view feeding patterns and statistics
 3. **MongoDB Database**: Stores all feeding events and user data
 
-## Features
+## Team
 
-- Real-time cat detection using computer vision
-- Daily and weekly feeding statistics
-- Feeding timeline visualization
-- User authentication system
-- Historical data analysis
+This project was developed by:
 
-## System Requirements
-
-- Docker
-- Docker Compose
-- Python 3.8+
-- A camera connected to your system
+- Nick ([@NMichael111](https://github.com/NMichael111))
+- Isaac ([@isaac1000000](https://github.com/isaac1000000))
 
 ## Setup Instructions
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/4-containers-internet-sensor-ship.git
+   git clone https://github.com/software-students-spring2025/4-containers-internet-sensor-ship.git
    cd 4-containers-internet-sensor-ship
    ```
 
-2. Create a `.env` file in the root directory with the following content:
+2. The project includes a `.env` file with the required environment variables:
    ```
    MONGODB_URI=mongodb://mongodb:27017/
    MONGODB_DBNAME=cat_monitor
@@ -55,40 +44,16 @@ This system consists of three main components:
 
 4. Access the web interface at `http://localhost:5000`
 
-## Development
+5. Create an account then login
 
-### Machine Learning Client
+6. Click start camera then click enable detection
 
-Located in the `machine-learning-client` directory, this component:
-- Uses OpenCV for camera access
-- Implements a simple CNN for cat detection
-- Stores detection events in MongoDB
+7. If a cat is detected by the camera then it will be logged and displayed on the graph.
 
-### Web Application
+## Using the Web Interface
 
-Located in the `web-app` directory, this component:
-- Provides a Flask-based web interface
-- Implements user authentication
-- Visualizes feeding data
-- Allows configuration of monitoring settings
+After logging in, you'll see the main dashboard with:
 
-## Database Schema
-
-The MongoDB database contains the following collections:
-
-- `users`: User account information
-- `feeding_events`: Timestamps and metadata of detected feeding events
-- `settings`: System configuration settings
-
-## Contributing
-
-1. Create a feature branch
-2. Make your changes
-3. Submit a pull request
-4. Ensure all tests pass
-5. Get code review approval
-6. Merge into main
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+1. **Recent Feedings**: Shows a list of recent cat feeding events with timestamps and thumbnail images
+2. **Authentication**: The system requires login to access the dashboard
+3. **Auto-refresh**: The dashboard automatically refreshes to show new feeding events
