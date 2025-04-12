@@ -1,6 +1,9 @@
-import pytest
 
+def test_app_creation(test_app):
+    assert test_app is not None
+    assert test_app.config['TESTING'] is True
 
-# Placeholder test to be better defined later
-def test_app_running(client):
-    assert client.get("/health").status_code == 200
+def test_health_check(client):
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json == {"status": "ok", "message": "App is running"}

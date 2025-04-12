@@ -2,6 +2,7 @@
 Main application module for the cat detection API.
 This module creates and configures the Flask application.
 """
+
 from flask import Flask
 from src.client_blueprint import client_blueprint
 
@@ -9,15 +10,15 @@ from src.client_blueprint import client_blueprint
 def create_app(config_object=None):
     """
     Create and configure the Flask application.
-    
+
     Args:
         config_object: Configuration object (optional)
-        
+
     Returns:
         Flask: The configured Flask application
     """
     application = Flask(__name__)
-    
+
     # Apply optional configuration
     if config_object:
         application.config.from_object(config_object)
@@ -35,4 +36,4 @@ def create_app(config_object=None):
 if __name__ == "__main__":
     print("Starting Cat Detection API server...")
     app = create_app()
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host="0.0.0.0", port=5000)

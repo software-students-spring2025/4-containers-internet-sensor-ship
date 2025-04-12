@@ -7,7 +7,7 @@ COPY Pipfile ./
 RUN pip install --upgrade pip && \
     pip install flask==2.2.3 \
                 flask-login==0.6.2 \
-                werkzeug==2.2.3 \
+                werkzeug==2.3.7 \
                 python-dotenv==1.0.0 \
                 requests==2.31.0 \
                 pytz==2023.3 \

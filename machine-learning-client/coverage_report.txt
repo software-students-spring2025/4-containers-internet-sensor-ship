@@ -1,0 +1,1030 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.3, pytest-8.3.5, pluggy-1.5.0
+rootdir: C:\Users\Nick\Documents\GitHub\4-containers-internet-sensor-ship\machine-learning-client
+plugins: cov-6.1.1
+collected 40 items
+
+tests\test_app.py .............                                          [ 32%]
+tests\test_client_blueprint.py ..........                                [ 57%]
+tests\test_load_cat_detector.py ..........                               [ 82%]
+tests\test_thumbnail.py FFFFF..                                          [100%]
+
+================================== FAILURES ===================================
+____________________________ test_create_thumbnail ____________________________
+
+    @client_blueprint.route("/detect", methods=["POST"])
+    def detect():
+        """Endpoint to detect cats in images"""
+        if "image" not in request.json:
+            return jsonify({"error": "No image provided"}), 400
+    
+        try:
+            # Get image data
+            image_data = request.json["image"]
+    
+            # Process the image
+            img = preprocess_image(image_data)
+    
+            # Detect cat in the image
+            is_cat_detected, confidence = detect_cat_with_cascade(img)
+    
+            # If cat is detected with sufficient confidence, check cooldown before saving
+            if is_cat_detected:
+                # Check if MongoDB is available
+                if db is None or mongo_client is None:
+                    print("Cannot log detection: MongoDB connection unavailable")
+                    return jsonify({
+                        "detected": is_cat_detected,
+                        "confidence": float(confidence),
+                        "logged": False,
+                        "message": "Detection not logged due to database unavailability"
+                    })
+    
+                current_time = get_utc_time()
+                cooldown_time = current_time - timedelta(seconds=DETECTION_COOLDOWN)
+    
+                # Check for recent detections within cooldown period
+                recent_detection = db.feeding_events.find_one(
+                    {"timestamp": {"$gte": cooldown_time}}
+                )
+    
+                if recent_detection:
+                    # Detection within cooldown period exists, don't save a new one
+                    print(
+                        "Cat detected, but within cooldown period. Skipping event logging."
+                    )
+>                   return jsonify(
+                        {
+                            "detected": is_cat_detected,
+                            "confidence": float(confidence),
+                            "logged": False,
+                            "message": "Detection not logged due to cooldown",
+                        }
+                    )
+
+src\client_blueprint.py:271: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Python312\Lib\site-packages\flask\json\__init__.py:170: in jsonify
+    return current_app.json.response(*args, **kwargs)  # type: ignore[return-value]
+C:\Python312\Lib\site-packages\werkzeug\local.py:318: in __get__
+    obj = instance._get_current_object()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def _get_current_object() -> T:
+        try:
+            obj = local.get()
+        except LookupError:
+>           raise RuntimeError(unbound_message) from None
+E           RuntimeError: Working outside of application context.
+E           
+E           This typically means that you attempted to use functionality that needed
+E           the current application. To solve this, set up an application context
+E           with app.app_context(). See the documentation for more information.
+
+C:\Python312\Lib\site-packages\werkzeug\local.py:519: RuntimeError
+
+During handling of the above exception, another exception occurred:
+
+    def test_create_thumbnail():
+        """Test the thumbnail creation functionality in the detect endpoint"""
+        # Create a simple base64 encoded image
+        dummy_image = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIHMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iiigD//2Q=="
+    
+        # Mock the request json
+        request_mock = MagicMock()
+        request_mock.json = {"image": dummy_image}
+    
+        # Mock the necessary functions
+        with patch('src.client_blueprint.request', request_mock), \
+             patch('src.client_blueprint.preprocess_image') as mock_preprocess, \
+             patch('src.client_blueprint.detect_cat_with_cascade') as mock_detect, \
+             patch('src.client_blueprint.db') as mock_db, \
+             patch('src.client_blueprint.get_utc_time') as mock_time, \
+             patch('cv2.resize') as mock_resize, \
+             patch('cv2.imencode') as mock_imencode, \
+             patch('src.client_blueprint.mongo_client') as mock_mongo_client:
+    
+            # Configure mocks
+            mock_preprocess.return_value = np.zeros((10, 10, 3), dtype=np.uint8)
+            mock_detect.return_value = (True, 0.75)
+    
+            # Mock time
+            mock_time_obj = MagicMock()
+            mock_time_obj.isoformat.return_value = "2023-01-01T12:00:00"
+            mock_time_obj.__sub__ = lambda self, other: mock_time_obj
+            mock_time.return_value = mock_time_obj
+    
+            # Mock resize function
+            mock_thumbnail = np.zeros((75, 100, 3), dtype=np.uint8)
+            mock_resize.return_value = mock_thumbnail
+    
+            # Mock imencode function
+            mock_buffer = MagicMock()
+            mock_imencode.return_value = (True, mock_buffer)
+    
+            # Mock base64 encode
+            with patch('base64.b64encode') as mock_b64encode:
+                mock_b64encode.return_value = b"mocked_thumbnail_base64"
+    
+                # Mock MongoDB - no recent detection
+                mock_db.feeding_events.find_one.return_value = None
+                mock_result = MagicMock()
+                mock_result.inserted_id = ObjectId("507f1f77bcf86cd799439011")
+                mock_db.feeding_events.insert_one.return_value = mock_result
+                mock_db.feeding_events.find_one.return_value = {
+                    "_id": ObjectId("507f1f77bcf86cd799439011"),
+                    "timestamp": mock_time_obj
+                }
+                mock_db.name = "test_db"
+    
+                # Call the function under test
+>               response = detect()
+
+tests\test_thumbnail.py:82: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\client_blueprint.py:377: in detect
+    except (cv2.error, np.Error) as e:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+attr = 'Error'
+
+    def __getattr__(attr):
+        # Warn for expired attributes
+        import warnings
+    
+        if attr == "linalg":
+            import numpy.linalg as linalg
+            return linalg
+        elif attr == "fft":
+            import numpy.fft as fft
+            return fft
+        elif attr == "dtypes":
+            import numpy.dtypes as dtypes
+            return dtypes
+        elif attr == "random":
+            import numpy.random as random
+            return random
+        elif attr == "polynomial":
+            import numpy.polynomial as polynomial
+            return polynomial
+        elif attr == "ma":
+            import numpy.ma as ma
+            return ma
+        elif attr == "ctypeslib":
+            import numpy.ctypeslib as ctypeslib
+            return ctypeslib
+        elif attr == "exceptions":
+            import numpy.exceptions as exceptions
+            return exceptions
+        elif attr == "testing":
+            import numpy.testing as testing
+            return testing
+        elif attr == "matlib":
+            import numpy.matlib as matlib
+            return matlib
+        elif attr == "f2py":
+            import numpy.f2py as f2py
+            return f2py
+        elif attr == "typing":
+            import numpy.typing as typing
+            return typing
+        elif attr == "rec":
+            import numpy.rec as rec
+            return rec
+        elif attr == "char":
+            import numpy.char as char
+            return char
+        elif attr == "array_api":
+            raise AttributeError("`numpy.array_api` is not available from "
+                                 "numpy 2.0 onwards", name=None)
+        elif attr == "core":
+            import numpy.core as core
+            return core
+        elif attr == "strings":
+            import numpy.strings as strings
+            return strings
+        elif attr == "distutils":
+            if 'distutils' in __numpy_submodules__:
+                import numpy.distutils as distutils
+                return distutils
+            else:
+                raise AttributeError("`numpy.distutils` is not available from "
+                                     "Python 3.12 onwards", name=None)
+    
+        if attr in __future_scalars__:
+            # And future warnings for those that will change, but also give
+            # the AttributeError
+            warnings.warn(
+                f"In the future `np.{attr}` will be defined as the "
+                "corresponding NumPy scalar.", FutureWarning, stacklevel=2)
+    
+        if attr in __former_attrs__:
+            raise AttributeError(__former_attrs__[attr], name=None)
+    
+        if attr in __expired_attributes__:
+            raise AttributeError(
+                f"`np.{attr}` was removed in the NumPy 2.0 release. "
+                f"{__expired_attributes__[attr]}",
+                name=None
+            )
+    
+        if attr == "chararray":
+            warnings.warn(
+                "`np.chararray` is deprecated and will be removed from "
+                "the main namespace in the future. Use an array with a string "
+                "or bytes dtype instead.", DeprecationWarning, stacklevel=2)
+            import numpy.char as char
+            return char.chararray
+    
+>       raise AttributeError("module {!r} has no attribute "
+                             "{!r}".format(__name__, attr))
+E       AttributeError: module 'numpy' has no attribute 'Error'
+
+C:\Python312\Lib\site-packages\numpy\__init__.py:427: AttributeError
+---------------------------- Captured stdout call -----------------------------
+Cat detected, but within cooldown period. Skipping event logging.
+________________________ test_create_thumbnail_failure ________________________
+
+    @client_blueprint.route("/detect", methods=["POST"])
+    def detect():
+        """Endpoint to detect cats in images"""
+        if "image" not in request.json:
+            return jsonify({"error": "No image provided"}), 400
+    
+        try:
+            # Get image data
+            image_data = request.json["image"]
+    
+            # Process the image
+            img = preprocess_image(image_data)
+    
+            # Detect cat in the image
+            is_cat_detected, confidence = detect_cat_with_cascade(img)
+    
+            # If cat is detected with sufficient confidence, check cooldown before saving
+            if is_cat_detected:
+                # Check if MongoDB is available
+                if db is None or mongo_client is None:
+                    print("Cannot log detection: MongoDB connection unavailable")
+                    return jsonify({
+                        "detected": is_cat_detected,
+                        "confidence": float(confidence),
+                        "logged": False,
+                        "message": "Detection not logged due to database unavailability"
+                    })
+    
+                current_time = get_utc_time()
+                cooldown_time = current_time - timedelta(seconds=DETECTION_COOLDOWN)
+    
+                # Check for recent detections within cooldown period
+                recent_detection = db.feeding_events.find_one(
+                    {"timestamp": {"$gte": cooldown_time}}
+                )
+    
+                if recent_detection:
+                    # Detection within cooldown period exists, don't save a new one
+                    print(
+                        "Cat detected, but within cooldown period. Skipping event logging."
+                    )
+>                   return jsonify(
+                        {
+                            "detected": is_cat_detected,
+                            "confidence": float(confidence),
+                            "logged": False,
+                            "message": "Detection not logged due to cooldown",
+                        }
+                    )
+
+src\client_blueprint.py:271: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Python312\Lib\site-packages\flask\json\__init__.py:170: in jsonify
+    return current_app.json.response(*args, **kwargs)  # type: ignore[return-value]
+C:\Python312\Lib\site-packages\werkzeug\local.py:318: in __get__
+    obj = instance._get_current_object()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def _get_current_object() -> T:
+        try:
+            obj = local.get()
+        except LookupError:
+>           raise RuntimeError(unbound_message) from None
+E           RuntimeError: Working outside of application context.
+E           
+E           This typically means that you attempted to use functionality that needed
+E           the current application. To solve this, set up an application context
+E           with app.app_context(). See the documentation for more information.
+
+C:\Python312\Lib\site-packages\werkzeug\local.py:519: RuntimeError
+
+During handling of the above exception, another exception occurred:
+
+    def test_create_thumbnail_failure():
+        """Test the thumbnail creation when image processing fails"""
+        # Create a simple base64 encoded image
+        dummy_image = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIHMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iiigD//2Q=="
+    
+        # Mock the request json
+        request_mock = MagicMock()
+        request_mock.json = {"image": dummy_image}
+    
+        # Mock the necessary functions
+        with patch('src.client_blueprint.request', request_mock), \
+             patch('src.client_blueprint.preprocess_image') as mock_preprocess, \
+             patch('src.client_blueprint.detect_cat_with_cascade') as mock_detect, \
+             patch('src.client_blueprint.db') as mock_db, \
+             patch('src.client_blueprint.get_utc_time') as mock_time, \
+             patch('cv2.resize', side_effect=Exception("Resize error")), \
+             patch('src.client_blueprint.mongo_client') as mock_mongo_client:
+    
+            # Configure mocks
+            mock_preprocess.return_value = np.zeros((10, 10, 3), dtype=np.uint8)
+            mock_detect.return_value = (True, 0.75)
+    
+            # Mock time
+            mock_time_obj = MagicMock()
+            mock_time_obj.isoformat.return_value = "2023-01-01T12:00:00"
+            mock_time_obj.__sub__ = lambda self, other: mock_time_obj
+            mock_time.return_value = mock_time_obj
+    
+            # Mock MongoDB - no recent detection
+            mock_db.feeding_events.find_one.return_value = None
+            mock_result = MagicMock()
+            mock_result.inserted_id = ObjectId("507f1f77bcf86cd799439011")
+            mock_db.feeding_events.insert_one.return_value = mock_result
+            mock_db.feeding_events.find_one.return_value = {
+                "_id": ObjectId("507f1f77bcf86cd799439011"),
+                "timestamp": mock_time_obj
+            }
+            mock_db.name = "test_db"
+    
+            # Call the function under test
+>           response = detect()
+
+tests\test_thumbnail.py:141: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\client_blueprint.py:377: in detect
+    except (cv2.error, np.Error) as e:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+attr = 'Error'
+
+    def __getattr__(attr):
+        # Warn for expired attributes
+        import warnings
+    
+        if attr == "linalg":
+            import numpy.linalg as linalg
+            return linalg
+        elif attr == "fft":
+            import numpy.fft as fft
+            return fft
+        elif attr == "dtypes":
+            import numpy.dtypes as dtypes
+            return dtypes
+        elif attr == "random":
+            import numpy.random as random
+            return random
+        elif attr == "polynomial":
+            import numpy.polynomial as polynomial
+            return polynomial
+        elif attr == "ma":
+            import numpy.ma as ma
+            return ma
+        elif attr == "ctypeslib":
+            import numpy.ctypeslib as ctypeslib
+            return ctypeslib
+        elif attr == "exceptions":
+            import numpy.exceptions as exceptions
+            return exceptions
+        elif attr == "testing":
+            import numpy.testing as testing
+            return testing
+        elif attr == "matlib":
+            import numpy.matlib as matlib
+            return matlib
+        elif attr == "f2py":
+            import numpy.f2py as f2py
+            return f2py
+        elif attr == "typing":
+            import numpy.typing as typing
+            return typing
+        elif attr == "rec":
+            import numpy.rec as rec
+            return rec
+        elif attr == "char":
+            import numpy.char as char
+            return char
+        elif attr == "array_api":
+            raise AttributeError("`numpy.array_api` is not available from "
+                                 "numpy 2.0 onwards", name=None)
+        elif attr == "core":
+            import numpy.core as core
+            return core
+        elif attr == "strings":
+            import numpy.strings as strings
+            return strings
+        elif attr == "distutils":
+            if 'distutils' in __numpy_submodules__:
+                import numpy.distutils as distutils
+                return distutils
+            else:
+                raise AttributeError("`numpy.distutils` is not available from "
+                                     "Python 3.12 onwards", name=None)
+    
+        if attr in __future_scalars__:
+            # And future warnings for those that will change, but also give
+            # the AttributeError
+            warnings.warn(
+                f"In the future `np.{attr}` will be defined as the "
+                "corresponding NumPy scalar.", FutureWarning, stacklevel=2)
+    
+        if attr in __former_attrs__:
+            raise AttributeError(__former_attrs__[attr], name=None)
+    
+        if attr in __expired_attributes__:
+            raise AttributeError(
+                f"`np.{attr}` was removed in the NumPy 2.0 release. "
+                f"{__expired_attributes__[attr]}",
+                name=None
+            )
+    
+        if attr == "chararray":
+            warnings.warn(
+                "`np.chararray` is deprecated and will be removed from "
+                "the main namespace in the future. Use an array with a string "
+                "or bytes dtype instead.", DeprecationWarning, stacklevel=2)
+            import numpy.char as char
+            return char.chararray
+    
+>       raise AttributeError("module {!r} has no attribute "
+                             "{!r}".format(__name__, attr))
+E       AttributeError: module 'numpy' has no attribute 'Error'
+
+C:\Python312\Lib\site-packages\numpy\__init__.py:427: AttributeError
+---------------------------- Captured stdout call -----------------------------
+Cat detected, but within cooldown period. Skipping event logging.
+_______________________ test_detect_with_database_error _______________________
+
+    @client_blueprint.route("/detect", methods=["POST"])
+    def detect():
+        """Endpoint to detect cats in images"""
+        if "image" not in request.json:
+            return jsonify({"error": "No image provided"}), 400
+    
+        try:
+            # Get image data
+            image_data = request.json["image"]
+    
+            # Process the image
+            img = preprocess_image(image_data)
+    
+            # Detect cat in the image
+            is_cat_detected, confidence = detect_cat_with_cascade(img)
+    
+            # If cat is detected with sufficient confidence, check cooldown before saving
+            if is_cat_detected:
+                # Check if MongoDB is available
+                if db is None or mongo_client is None:
+                    print("Cannot log detection: MongoDB connection unavailable")
+                    return jsonify({
+                        "detected": is_cat_detected,
+                        "confidence": float(confidence),
+                        "logged": False,
+                        "message": "Detection not logged due to database unavailability"
+                    })
+    
+                current_time = get_utc_time()
+                cooldown_time = current_time - timedelta(seconds=DETECTION_COOLDOWN)
+    
+                # Check for recent detections within cooldown period
+                recent_detection = db.feeding_events.find_one(
+                    {"timestamp": {"$gte": cooldown_time}}
+                )
+    
+                if recent_detection:
+                    # Detection within cooldown period exists, don't save a new one
+                    print(
+                        "Cat detected, but within cooldown period. Skipping event logging."
+                    )
+                    return jsonify(
+                        {
+                            "detected": is_cat_detected,
+                            "confidence": float(confidence),
+                            "logged": False,
+                            "message": "Detection not logged due to cooldown",
+                        }
+                    )
+    
+                # No recent detection, save the event
+                try:
+                    # Get current time and ensure it's in the proper format
+                    current_time = get_utc_time()
+                    print(f"Current time (UTC): {current_time.isoformat()}")
+    
+                    # Create a simplified event - don't include the full image which is large
+                    # Keep a smaller version for display purposes
+                    image_for_storage = None
+                    try:
+                        # If the image is a data URL, create a proper thumbnail
+                        if image_data and image_data.startswith('data:image'):
+                            # Extract the base64 data and image type
+                            image_parts = image_data.split(',')
+                            image_prefix = image_parts[0] + ','  # Keep the data:image/jpeg;base64, part
+                            image_base64 = image_parts[1]
+    
+                            # Decode the base64 image
+                            image_bytes = base64.b64decode(image_base64)
+                            nparr = np.frombuffer(image_bytes, np.uint8)
+                            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    
+                            if img is not None:
+                                # Resize image to a small thumbnail (100x75)
+                                thumbnail = cv2.resize(img, (100, 75), interpolation=cv2.INTER_AREA)
+    
+                                # Encode to jpeg with lower quality
+                                _, buffer = cv2.imencode('.jpg', thumbnail, [cv2.IMWRITE_JPEG_QUALITY, 70])
+    
+                                # Convert back to base64
+                                thumbnail_base64 = base64.b64encode(buffer).decode('utf-8')
+    
+                                # Create the full data URL
+                                image_for_storage = f"data:image/jpeg;base64,{thumbnail_base64}"
+                                print("Created proper thumbnail image")
+                            else:
+                                print("Failed to decode image for thumbnail creation")
+                        else:
+                            print("No valid image data to save")
+                    except Exception as img_error:
+                        print(f"Error processing image for storage: {img_error}")
+    
+                    # Prepare event document with proper data types
+                    event = {
+                        "timestamp": current_time,           # Use Python datetime object
+                        "type": "feeding",                   # String
+                        "confidence": float(confidence),     # Float
+                        "image": image_for_storage           # String or None
+                    }
+    
+                    # Log the event we're about to save
+                    print(f"Saving detection to MongoDB collection: feeding_events in database {db.name}")
+                    print(f"Event timestamp: {event['timestamp'].isoformat()}, type: {event['type']}")
+    
+                    # Insert the document
+                    result = db.feeding_events.insert_one(event)
+                    inserted_id = result.inserted_id
+                    print(f"Detection saved with ID: {inserted_id}")
+    
+                    # Verify the document was saved by retrieving it
+                    saved_event = db.feeding_events.find_one({"_id": inserted_id})
+                    if saved_event:
+                        print(f"Successfully verified saved event with ID: {inserted_id}")
+                        saved_time = saved_event.get("timestamp")
+                        print(f"Saved timestamp: {saved_time}")
+                    else:
+                        print(f"Warning: Could not verify saved event with ID: {inserted_id}")
+    
+                    # Log the detection with confidence
+                    print(f"Cat detected with {confidence:.2f} confidence! "
+                          f"Event saved at {event['timestamp'].strftime('%H:%M:%S')}")
+    
+                    # Return success response
+                    return jsonify({
+                        "detected": True,
+                        "confidence": float(confidence),
+                        "logged": True,
+                        "message": "Detection logged successfully",
+                        "timestamp": current_time.isoformat(),
+                        "event_id": str(inserted_id)
+                    })
+                except Exception as e:
+                    print(f"Error saving detection to MongoDB: {e}")
+>                   return jsonify(
+                        {
+                            "detected": is_cat_detected,
+                            "confidence": float(confidence),
+                            "logged": False,
+                            "error": str(e)
+                        }
+                    )
+
+src\client_blueprint.py:363: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Python312\Lib\site-packages\flask\json\__init__.py:170: in jsonify
+    return current_app.json.response(*args, **kwargs)  # type: ignore[return-value]
+C:\Python312\Lib\site-packages\werkzeug\local.py:318: in __get__
+    obj = instance._get_current_object()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def _get_current_object() -> T:
+        try:
+            obj = local.get()
+        except LookupError:
+>           raise RuntimeError(unbound_message) from None
+E           RuntimeError: Working outside of application context.
+E           
+E           This typically means that you attempted to use functionality that needed
+E           the current application. To solve this, set up an application context
+E           with app.app_context(). See the documentation for more information.
+
+C:\Python312\Lib\site-packages\werkzeug\local.py:519: RuntimeError
+
+During handling of the above exception, another exception occurred:
+
+    def test_detect_with_database_error():
+        """Test detect endpoint when database operations fail"""
+        # Create a simple base64 encoded image
+        dummy_image = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIHMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iiigD//2Q=="
+    
+        # Mock the request json
+        request_mock = MagicMock()
+        request_mock.json = {"image": dummy_image}
+    
+        # Mock the necessary functions
+        with patch('src.client_blueprint.request', request_mock), \
+             patch('src.client_blueprint.preprocess_image') as mock_preprocess, \
+             patch('src.client_blueprint.detect_cat_with_cascade') as mock_detect, \
+             patch('src.client_blueprint.db') as mock_db, \
+             patch('src.client_blueprint.get_utc_time') as mock_time, \
+             patch('src.client_blueprint.mongo_client') as mock_mongo_client:
+    
+            # Configure mocks
+            mock_preprocess.return_value = np.zeros((10, 10, 3), dtype=np.uint8)
+            mock_detect.return_value = (True, 0.75)
+    
+            # Mock time
+            mock_time_obj = MagicMock()
+            mock_time_obj.isoformat.return_value = "2023-01-01T12:00:00"
+            mock_time_obj.__sub__ = lambda self, other: mock_time_obj
+            mock_time.return_value = mock_time_obj
+    
+            # Mock MongoDB to throw an error during insert
+            mock_db.feeding_events.find_one.return_value = None
+            mock_db.feeding_events.insert_one.side_effect = Exception("MongoDB insert error")
+            mock_db.name = "test_db"
+    
+            # Call the function under test
+>           response = detect()
+
+tests\test_thumbnail.py:187: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\client_blueprint.py:377: in detect
+    except (cv2.error, np.Error) as e:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+attr = 'Error'
+
+    def __getattr__(attr):
+        # Warn for expired attributes
+        import warnings
+    
+        if attr == "linalg":
+            import numpy.linalg as linalg
+            return linalg
+        elif attr == "fft":
+            import numpy.fft as fft
+            return fft
+        elif attr == "dtypes":
+            import numpy.dtypes as dtypes
+            return dtypes
+        elif attr == "random":
+            import numpy.random as random
+            return random
+        elif attr == "polynomial":
+            import numpy.polynomial as polynomial
+            return polynomial
+        elif attr == "ma":
+            import numpy.ma as ma
+            return ma
+        elif attr == "ctypeslib":
+            import numpy.ctypeslib as ctypeslib
+            return ctypeslib
+        elif attr == "exceptions":
+            import numpy.exceptions as exceptions
+            return exceptions
+        elif attr == "testing":
+            import numpy.testing as testing
+            return testing
+        elif attr == "matlib":
+            import numpy.matlib as matlib
+            return matlib
+        elif attr == "f2py":
+            import numpy.f2py as f2py
+            return f2py
+        elif attr == "typing":
+            import numpy.typing as typing
+            return typing
+        elif attr == "rec":
+            import numpy.rec as rec
+            return rec
+        elif attr == "char":
+            import numpy.char as char
+            return char
+        elif attr == "array_api":
+            raise AttributeError("`numpy.array_api` is not available from "
+                                 "numpy 2.0 onwards", name=None)
+        elif attr == "core":
+            import numpy.core as core
+            return core
+        elif attr == "strings":
+            import numpy.strings as strings
+            return strings
+        elif attr == "distutils":
+            if 'distutils' in __numpy_submodules__:
+                import numpy.distutils as distutils
+                return distutils
+            else:
+                raise AttributeError("`numpy.distutils` is not available from "
+                                     "Python 3.12 onwards", name=None)
+    
+        if attr in __future_scalars__:
+            # And future warnings for those that will change, but also give
+            # the AttributeError
+            warnings.warn(
+                f"In the future `np.{attr}` will be defined as the "
+                "corresponding NumPy scalar.", FutureWarning, stacklevel=2)
+    
+        if attr in __former_attrs__:
+            raise AttributeError(__former_attrs__[attr], name=None)
+    
+        if attr in __expired_attributes__:
+            raise AttributeError(
+                f"`np.{attr}` was removed in the NumPy 2.0 release. "
+                f"{__expired_attributes__[attr]}",
+                name=None
+            )
+    
+        if attr == "chararray":
+            warnings.warn(
+                "`np.chararray` is deprecated and will be removed from "
+                "the main namespace in the future. Use an array with a string "
+                "or bytes dtype instead.", DeprecationWarning, stacklevel=2)
+            import numpy.char as char
+            return char.chararray
+    
+>       raise AttributeError("module {!r} has no attribute "
+                             "{!r}".format(__name__, attr))
+E       AttributeError: module 'numpy' has no attribute 'Error'
+
+C:\Python312\Lib\site-packages\numpy\__init__.py:427: AttributeError
+---------------------------- Captured stdout call -----------------------------
+Current time (UTC): 2023-01-01T12:00:00
+Error processing image for storage: not enough values to unpack (expected 2, got 0)
+Saving detection to MongoDB collection: feeding_events in database test_db
+Event timestamp: 2023-01-01T12:00:00, type: feeding
+Error saving detection to MongoDB: MongoDB insert error
+__________________________ test_detect_with_cooldown __________________________
+
+    @client_blueprint.route("/detect", methods=["POST"])
+    def detect():
+        """Endpoint to detect cats in images"""
+        if "image" not in request.json:
+            return jsonify({"error": "No image provided"}), 400
+    
+        try:
+            # Get image data
+            image_data = request.json["image"]
+    
+            # Process the image
+            img = preprocess_image(image_data)
+    
+            # Detect cat in the image
+            is_cat_detected, confidence = detect_cat_with_cascade(img)
+    
+            # If cat is detected with sufficient confidence, check cooldown before saving
+            if is_cat_detected:
+                # Check if MongoDB is available
+                if db is None or mongo_client is None:
+                    print("Cannot log detection: MongoDB connection unavailable")
+                    return jsonify({
+                        "detected": is_cat_detected,
+                        "confidence": float(confidence),
+                        "logged": False,
+                        "message": "Detection not logged due to database unavailability"
+                    })
+    
+                current_time = get_utc_time()
+                cooldown_time = current_time - timedelta(seconds=DETECTION_COOLDOWN)
+    
+                # Check for recent detections within cooldown period
+                recent_detection = db.feeding_events.find_one(
+                    {"timestamp": {"$gte": cooldown_time}}
+                )
+    
+                if recent_detection:
+                    # Detection within cooldown period exists, don't save a new one
+                    print(
+                        "Cat detected, but within cooldown period. Skipping event logging."
+                    )
+>                   return jsonify(
+                        {
+                            "detected": is_cat_detected,
+                            "confidence": float(confidence),
+                            "logged": False,
+                            "message": "Detection not logged due to cooldown",
+                        }
+                    )
+
+src\client_blueprint.py:271: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Python312\Lib\site-packages\flask\json\__init__.py:170: in jsonify
+    return current_app.json.response(*args, **kwargs)  # type: ignore[return-value]
+C:\Python312\Lib\site-packages\werkzeug\local.py:318: in __get__
+    obj = instance._get_current_object()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def _get_current_object() -> T:
+        try:
+            obj = local.get()
+        except LookupError:
+>           raise RuntimeError(unbound_message) from None
+E           RuntimeError: Working outside of application context.
+E           
+E           This typically means that you attempted to use functionality that needed
+E           the current application. To solve this, set up an application context
+E           with app.app_context(). See the documentation for more information.
+
+C:\Python312\Lib\site-packages\werkzeug\local.py:519: RuntimeError
+
+During handling of the above exception, another exception occurred:
+
+    def test_detect_with_cooldown():
+        """Test detect endpoint when within cooldown period"""
+        # Create a simple base64 encoded image
+        dummy_image = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIHMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iiigD//2Q=="
+    
+        # Mock the request json
+        request_mock = MagicMock()
+        request_mock.json = {"image": dummy_image}
+    
+        # Mock the necessary functions
+        with patch('src.client_blueprint.request', request_mock), \
+             patch('src.client_blueprint.preprocess_image') as mock_preprocess, \
+             patch('src.client_blueprint.detect_cat_with_cascade') as mock_detect, \
+             patch('src.client_blueprint.db') as mock_db, \
+             patch('src.client_blueprint.get_utc_time') as mock_time, \
+             patch('src.client_blueprint.mongo_client') as mock_mongo_client:
+    
+            # Configure mocks
+            mock_preprocess.return_value = np.zeros((10, 10, 3), dtype=np.uint8)
+            mock_detect.return_value = (True, 0.75)
+    
+            # Mock time
+            mock_time_obj = MagicMock()
+            mock_time_obj.isoformat.return_value = "2023-01-01T12:00:00"
+            mock_time_obj.__sub__ = lambda self, other: mock_time_obj
+            mock_time.return_value = mock_time_obj
+    
+            # Mock MongoDB - return a recent event to trigger cooldown
+            mock_db.feeding_events.find_one.return_value = {
+                "_id": ObjectId("507f1f77bcf86cd799439011"),
+                "timestamp": mock_time_obj
+            }
+    
+            # Call the function under test
+>           response = detect()
+
+tests\test_thumbnail.py:229: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\client_blueprint.py:377: in detect
+    except (cv2.error, np.Error) as e:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+attr = 'Error'
+
+    def __getattr__(attr):
+        # Warn for expired attributes
+        import warnings
+    
+        if attr == "linalg":
+            import numpy.linalg as linalg
+            return linalg
+        elif attr == "fft":
+            import numpy.fft as fft
+            return fft
+        elif attr == "dtypes":
+            import numpy.dtypes as dtypes
+            return dtypes
+        elif attr == "random":
+            import numpy.random as random
+            return random
+        elif attr == "polynomial":
+            import numpy.polynomial as polynomial
+            return polynomial
+        elif attr == "ma":
+            import numpy.ma as ma
+            return ma
+        elif attr == "ctypeslib":
+            import numpy.ctypeslib as ctypeslib
+            return ctypeslib
+        elif attr == "exceptions":
+            import numpy.exceptions as exceptions
+            return exceptions
+        elif attr == "testing":
+            import numpy.testing as testing
+            return testing
+        elif attr == "matlib":
+            import numpy.matlib as matlib
+            return matlib
+        elif attr == "f2py":
+            import numpy.f2py as f2py
+            return f2py
+        elif attr == "typing":
+            import numpy.typing as typing
+            return typing
+        elif attr == "rec":
+            import numpy.rec as rec
+            return rec
+        elif attr == "char":
+            import numpy.char as char
+            return char
+        elif attr == "array_api":
+            raise AttributeError("`numpy.array_api` is not available from "
+                                 "numpy 2.0 onwards", name=None)
+        elif attr == "core":
+            import numpy.core as core
+            return core
+        elif attr == "strings":
+            import numpy.strings as strings
+            return strings
+        elif attr == "distutils":
+            if 'distutils' in __numpy_submodules__:
+                import numpy.distutils as distutils
+                return distutils
+            else:
+                raise AttributeError("`numpy.distutils` is not available from "
+                                     "Python 3.12 onwards", name=None)
+    
+        if attr in __future_scalars__:
+            # And future warnings for those that will change, but also give
+            # the AttributeError
+            warnings.warn(
+                f"In the future `np.{attr}` will be defined as the "
+                "corresponding NumPy scalar.", FutureWarning, stacklevel=2)
+    
+        if attr in __former_attrs__:
+            raise AttributeError(__former_attrs__[attr], name=None)
+    
+        if attr in __expired_attributes__:
+            raise AttributeError(
+                f"`np.{attr}` was removed in the NumPy 2.0 release. "
+                f"{__expired_attributes__[attr]}",
+                name=None
+            )
+    
+        if attr == "chararray":
+            warnings.warn(
+                "`np.chararray` is deprecated and will be removed from "
+                "the main namespace in the future. Use an array with a string "
+                "or bytes dtype instead.", DeprecationWarning, stacklevel=2)
+            import numpy.char as char
+            return char.chararray
+    
+>       raise AttributeError("module {!r} has no attribute "
+                             "{!r}".format(__name__, attr))
+E       AttributeError: module 'numpy' has no attribute 'Error'
+
+C:\Python312\Lib\site-packages\numpy\__init__.py:427: AttributeError
+---------------------------- Captured stdout call -----------------------------
+Cat detected, but within cooldown period. Skipping event logging.
+__________________ test_detect_with_server_selection_timeout __________________
+
+    def test_detect_with_server_selection_timeout():
+        """Test detect with ServerSelectionTimeoutError"""
+        dummy_image = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIHMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iiigD//2Q=="
+    
+        # Mock the request json
+        request_mock = MagicMock()
+        request_mock.json = {"image": dummy_image}
+    
+        # Import MongoDB exceptions for testing
+>       from pymongo.errors import ServerSelectionTimeoutError
+E       ModuleNotFoundError: No module named 'pymongo.errors'; 'pymongo' is not a package
+
+tests\test_thumbnail.py:246: ModuleNotFoundError
+============================== warnings summary ===============================
+src\client_blueprint.py:43
+  C:\Users\Nick\Documents\GitHub\4-containers-internet-sensor-ship\machine-learning-client\src\client_blueprint.py:43: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "timestamp": datetime.utcnow(),
+
+tests/test_load_cat_detector.py::test_get_utc_time_format
+  C:\Users\Nick\Documents\GitHub\4-containers-internet-sensor-ship\machine-learning-client\src\client_blueprint.py:67: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.12.3-final-0 _______________
+
+Name                      Stmts   Miss  Cover
+---------------------------------------------
+src\__init__.py               0      0   100%
+src\app.py                   16      3    81%
+src\client_blueprint.py     165     31    81%
+---------------------------------------------
+TOTAL                       181     34    81%
+=========================== short test summary info ===========================
+FAILED tests/test_thumbnail.py::test_create_thumbnail - AttributeError: modul...
+FAILED tests/test_thumbnail.py::test_create_thumbnail_failure - AttributeErro...
+FAILED tests/test_thumbnail.py::test_detect_with_database_error - AttributeEr...
+FAILED tests/test_thumbnail.py::test_detect_with_cooldown - AttributeError: m...
+FAILED tests/test_thumbnail.py::test_detect_with_server_selection_timeout - M...
+================== 5 failed, 35 passed, 2 warnings in 0.40s ===================

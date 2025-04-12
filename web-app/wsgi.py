@@ -2,6 +2,7 @@
 WSGI entry point for the Flask application.
 This file is needed to run the app with Gunicorn.
 """
+
 from src.app import create_app
 
 # This should be imported by Gunicorn
