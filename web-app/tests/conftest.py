@@ -1,19 +1,9 @@
 import pytest
-from src.app import create_app 
+from src.app import create_app
+import json
 
-
-@pytest.fixture(scope='module')
-def test_app():
-    app = create_app()
-    app.config.update({'TESTING': True})
-    yield app
-
+# A boilerplate fixture for creating a testable app
 @pytest.fixture
 def app():
-    app = create_app()
-    app.config.update({'TESTING': True})
+    app = create_app(TEST_CONTEXT=True)
     return app
-
-@pytest.fixture
-def client(app):
-    return app.test_client()
