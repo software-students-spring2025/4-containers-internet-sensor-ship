@@ -1,6 +1,6 @@
 [![Web App CI](https://github.com/software-students-spring2025/4-containers-internet-sensor-ship/actions/workflows/build-frontend.yml/badge.svg)](https://github.com/software-students-spring2025/4-containers-internet-sensor-ship/actions/workflows/build-frontend.yml)
 [![Machine Learning Client](https://github.com/software-students-spring2025/4-containers-internet-sensor-ship/actions/workflows/build-backend.yml/badge.svg)](https://github.com/software-students-spring2025/4-containers-internet-sensor-ship/actions/workflows/build-backend.yml)
-[![lint-free](https://github.com/software-students-spring2025/4-containers-internet-sensor-ship/actions/workflows/lint.yml/badge.svg)](https://github.com/software-students-spring2025/4-containers-internet-sensor-ship/actions/workflows/lint.yml)
+![Lint-free](https://github.com/nyu-software-engineering/containerized-app-exercise/actions/workflows/lint.yml/badge.svg)
 
 # Cat Food Monitor 🐱
 
