@@ -47,7 +47,7 @@ def get_utc_time():
     return datetime.utcnow()  # Keep as naive datetime for MongoDB compatibility
 
 
-def create_app(test_config=None):
+def create_app(TEST_CONTEXT):
     """
     The app factory for creating instances of the app
     """
@@ -76,6 +76,7 @@ def create_app(test_config=None):
         SECRET_KEY=os.getenv("SECRET_KEY", "dev-secret-key"),
         MONGODB_URI=os.getenv("MONGODB_URI", "mongodb://localhost:27017/"),
         MONGODB_DBNAME=os.getenv("MONGODB_DBNAME", "cat_feeder"),
+        TEST_CONTEXT=TEST_CONTEXT
     )
 
     # Print config for debugging (excluding sensitive info)
@@ -83,13 +84,6 @@ def create_app(test_config=None):
         f"MongoDB URI configured (showing only prefix): {app.config['MONGODB_URI'].split('@')[0]}..."
     )
     print(f"MongoDB DB name: {app.config['MONGODB_DBNAME']}")
-
-    if test_config is None:
-        # Load the instance config, if it exists, when not testing
-        app.config.from_pyfile("config.py", silent=True)
-    else:
-        # Load the test config if passed in
-        app.config.from_mapping(test_config)
 
     # Ensure the instance folder exists
     try:
@@ -117,9 +111,12 @@ def create_app(test_config=None):
     @login_manager.user_loader
     def load_user(user_id):
         try:
+            if TEST_CONTEXT:
+                return User({"_id":12345, "username":"sample_user"})
             user_data = app.db.users.find_one({"_id": ObjectId(user_id)})
             if user_data:
                 return User(user_data)
+
         except Exception as e:
             app.logger.error(f"Error loading user {user_id}: {e}")
         return None
@@ -150,6 +147,3 @@ def create_app(test_config=None):
 # if __name__ == "__main__":
 #    app = create_app()
 #    app.run(host='0.0.0.0', debug=True) # Running via 'flask run' or WSGI server is preferred
-
-
-"""Just changing something silly here to see what happens"""

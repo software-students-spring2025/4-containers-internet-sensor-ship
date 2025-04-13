@@ -1,6 +1,7 @@
 import pytest
 import src.app as flapp 
 from datetime import datetime
+import os
 
 def test_app_running(client):
     """
@@ -25,12 +26,16 @@ def test_get_utc_time():
     end = datetime.utcnow()
     assert start <= alpha <= end
 
-def test_jinja2_filter_datetime(client):
+def test_jinja2_filter_datetime():
     """
     Test the _jinja2_filter_datetime function
     """
     result = flapp.filter_datetime(datetime(2024, 4, 15)) 
     expected = "2024-04-15 00:00:00"
+    assert result == expected
+
+    expected = "2024-04-16 00:00:00"
+    result = flapp.filter_datetime(expected)
     assert result == expected
 
 """
@@ -42,10 +47,9 @@ def test_no_error_on_bad_mongodb_connection():
     Makes sure a bad mongodb connection does not crash the app
     """
     try:
-        test_app = flapp.create_app(test_config={
-            "SECRET_KEY":"BAD", 
-            "MONGODB_URI":"BAD",
-            "MONGODB_DBNAME":"BAD"})
+        os.environ["MONGODB_URI"] = "BAD"
+        test_app = flapp.create_app(TEST_CONTEXT=True)
+
     except Exception:
         pytest.fail("Error raised on bad mongodb connection")
 
