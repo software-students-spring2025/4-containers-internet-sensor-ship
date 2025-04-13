@@ -4,8 +4,27 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+flask = ">=2.3.3"
+flask-login = ">=0.6.2"
+python-dotenv = ">=1.0.0"
+requests = ">=2.31.0"
+pytz = ">=2023.3"
+gunicorn = ">=21.2.0"
+pymongo = ">=4.5.0"
+bson = ">=0.5.10"
+werkzeug = ">=2.3.7"
+numpy = ">=1.24.3"
+opencv-python = ">=4.8.0.76"
+setuptools = "*"
+wheel = "*"
 
 [dev-packages]
+pytest = ">=7.4.2"
+pytest-flask = ">=1.3.0"
+pylint = ">=2.17.5"
+black = ">=23.7.0"
+pytest-cov = ">=4.1.0"
+tomli = ">=2.0.1"
 
 [requires]
-python_version = "3.12"
+python_version = "3"

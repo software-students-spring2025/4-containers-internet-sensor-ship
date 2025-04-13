@@ -97,28 +97,51 @@
 
 {% block scripts %}
 <script>
-    // Get the chart canvas element
     const chartCanvas = document.getElementById('feedingChart');
     
-    // Parse the data from data attributes
-    const timestamps = JSON.parse(chartCanvas.dataset.timestamps);
-    const confidences = JSON.parse(chartCanvas.dataset.confidences);
+    let timestamps = [];
+    let confidences = [];
+    try {
+        timestamps = JSON.parse(chartCanvas.dataset.timestamps || '[]');
+        confidences = JSON.parse(chartCanvas.dataset.confidences || '[]');
+        console.log(`Initial chart data: ${timestamps.length} timestamps, ${confidences.length} confidences`);
+    } catch (err) {
+        console.error("Error parsing chart data:", err);
+        timestamps = [];
+        confidences = [];
+    }
     
-    // Sort the data by timestamps (convert to date objects for proper sorting)
     const sortedData = timestamps.map((time, index) => {
-        // Create date object for time string
-        const today = new Date();
-        const [hours, minutes] = time.split(':');
-        today.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
-        
-        return {
-            timestamp: today,
-            displayTime: time,
-            confidence: confidences[index]
-        };
+        try {
+            if (time.includes('T') || time.includes('-')) {
+                const date = new Date(time);
+                return {
+                    timestamp: date,
+                    displayTime: formatLocalTime(time, false),
+                    confidence: confidences[index] || 0
+                };
+            }
+            
+            const today = new Date();
+            const [hours, minutes] = (time || '00:00').split(':');
+            today.setHours(parseInt(hours, 10) || 0, parseInt(minutes, 10) || 0, 0, 0);
+            
+            return {
+                timestamp: today,
+                displayTime: formatLocalTime(time, false) || time,
+                confidence: confidences[index] || 0
+            };
+        } catch (err) {
+            console.error(`Error processing timestamp "${time}":`, err);
+            const date = new Date();
+            return {
+                timestamp: date,
+                displayTime: "Error",
+                confidence: 0
+            };
+        }
     }).sort((a, b) => a.timestamp - b.timestamp);
     
-    // Extract sorted arrays
     const sortedTimestamps = sortedData.map(d => d.displayTime);
     const sortedConfidences = sortedData.map(d => d.confidence);
     
@@ -133,7 +156,6 @@
         }]
     };
 
-    // Create the chart
     const ctx = chartCanvas.getContext('2d');
     window.feedingChart = new Chart(ctx, {
         type: 'line',
@@ -162,7 +184,7 @@
                         display: true,
                         text: 'Time of Day'
                     },
-                    reverse: false // Ensure time runs forward
+                    reverse: false
                 },
                 y: {
                     beginAtZero: true,
@@ -187,17 +209,14 @@
     let stream = null;
     let detectionInterval = null;
 
-    // Start camera button
     startCameraBtn.addEventListener('click', async () => {
         try {
-            // This will trigger the browser permission prompt
             stream = await navigator.mediaDevices.getUserMedia({ 
                 video: true, 
                 audio: false 
             });
             video.srcObject = stream;
             
-            // Make canvas match video dimensions
             video.onloadedmetadata = () => {
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
@@ -269,22 +288,23 @@
         })
         .then(response => response.json())
         .then(data => {
-            // Update UI based on detection result
+            console.log("Detection result:", data);
+            
             if (data.detected) {
-                // Make border more obvious - thicker, with a glow effect and brighter blue
                 detectionBorder.style.borderColor = '#0d6efd';
                 detectionBorder.style.borderWidth = '12px';
                 detectionBorder.style.boxShadow = '0 0 15px rgba(13, 110, 253, 0.8)';
+                if (data.logged) {
+                    console.log("Cat detection was logged - updating UI immediately");
+                    updateFeedingData();
+                    setTimeout(updateFeedingData, 1000);
+                }
                 
-                // After 1 second, fade out the border
                 setTimeout(() => {
                     detectionBorder.style.borderColor = 'transparent';
                     detectionBorder.style.borderWidth = '8px';
                     detectionBorder.style.boxShadow = 'none';
-                    
-                    // Update feeding data without page reload
-                    updateFeedingData();
-                }, 1500); // Increased to 1.5 seconds to see the highlight better
+                }, 1500);
             }
         })
         .catch(error => {
@@ -292,14 +312,9 @@
         });
     }
 
-    // Improved function to convert server time to local time
     function formatLocalTime(timeString, includeSeconds = true) {
-        // Handle ISO format date string with timezone info
         if (timeString.includes('T') || timeString.includes('-')) {
-            // Parse the ISO timestamp with timezone info
             const date = new Date(timeString);
-            
-            // Format using 12-hour clock with AM/PM
             let options = { 
                 hour: '2-digit', 
                 minute: '2-digit',
@@ -312,17 +327,14 @@
             
             return date.toLocaleTimeString([], options);
         } else {
-            // Handle simple time strings (should be rare with updated backend)
             const parts = timeString.split(':');
             const hours = parseInt(parts[0], 10);
             const minutes = parseInt(parts[1], 10);
             const seconds = parts.length > 2 ? parseInt(parts[2], 10) : 0;
             
-            // Create a date object using the current date
             const date = new Date();
             date.setHours(hours, minutes, seconds, 0);
             
-            // Format using 12-hour clock with AM/PM
             let options = { 
                 hour: '2-digit', 
                 minute: '2-digit',
@@ -337,71 +349,102 @@
         }
     }
 
-    // Find all time elements on page load and convert them
     document.addEventListener('DOMContentLoaded', () => {
-        // Convert the last feeding time
         const lastFeedingElement = document.getElementById('last-feeding');
         if (lastFeedingElement && lastFeedingElement.textContent.trim() !== 'No feedings today') {
             lastFeedingElement.textContent = formatLocalTime(lastFeedingElement.textContent.trim(), false);
         }
         
-        // Convert times in the feeding table
         document.querySelectorAll('.feeding-time').forEach(el => {
             el.textContent = formatLocalTime(el.textContent.trim());
         });
         
-        // Update chart labels to local time
         if (window.feedingChart && window.feedingChart.data.labels) {
             window.feedingChart.data.labels = window.feedingChart.data.labels.map(time => 
                 formatLocalTime(time, false)
             );
             window.feedingChart.update();
         }
+        
+        updateFeedingData();
+        
+        setInterval(updateFeedingData, 5000);
+        
+        console.log("Auto-refresh for feeding events set up successfully");
     });
 
-    // Update the updateFeedingData function to use local time
     function updateFeedingData() {
-        // Fetch the latest feeding events
+        console.log("Fetching latest feeding events...");
         fetch('/api/feeding-events')
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
             .then(data => {
-                // Update stats
+                console.log("Received feeding data:", data);
+                
                 if (document.getElementById('total-feedings')) {
                     document.getElementById('total-feedings').textContent = data.total_feedings;
+                    console.log(`Updated total feedings: ${data.total_feedings}`);
                 }
                 
-                if (document.getElementById('last-feeding') && data.last_feeding) {
-                    document.getElementById('last-feeding').textContent = 
-                        data.last_feeding ? formatLocalTime(data.last_feeding, false) : 'No feedings today';
+                if (document.getElementById('last-feeding')) {
+                    const lastFeedingText = data.last_feeding ? 
+                        formatLocalTime(data.last_feeding, false) : 
+                        'No feedings today';
+                    document.getElementById('last-feeding').textContent = lastFeedingText;
+                    console.log(`Updated last feeding time: ${lastFeedingText}`);
                 }
                 
-                // Update the table with latest events
                 const tableBody = document.querySelector('.table tbody');
-                if (tableBody && data.feeding_events.length > 0) {
-                    // Clear existing rows
+                if (tableBody && data.feeding_events && data.feeding_events.length > 0) {
+                    console.log(`Updating table with ${data.feeding_events.length} events`);
                     tableBody.innerHTML = '';
                     
-                    // Add new rows with local time
-                    data.feeding_events.forEach(event => {
-                        const localTime = formatLocalTime(event.timestamp);
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td class="feeding-time">${localTime}</td>
-                            <td>${event.type}</td>
-                            <td>${event.confidence.toFixed(2)}</td>
-                            <td>${event.image ? 
-                                `<img src="${event.image}" alt="Feeding event" width="100" height="75" class="img-thumbnail">` : 
-                                'No image'}</td>
-                        `;
-                        tableBody.appendChild(row);
+                    data.feeding_events.forEach((event, index) => {
+                        console.log(`Processing event ${index+1}:`, event);
+                        try {
+                            const localTime = formatLocalTime(event.timestamp || '');
+                            const row = document.createElement('tr');
+                            
+                            let confidenceValue = 0;
+                            try {
+                                confidenceValue = parseFloat(event.confidence) || 0;
+                            } catch(e) {
+                                console.error(`Error parsing confidence value: ${event.confidence}`, e);
+                            }
+                            
+                            let imageHtml = 'No image';
+                            if (event.image && typeof event.image === 'string' && event.image.startsWith('data:image')) {
+                                try {
+                                    imageHtml = `<img src="${event.image}" alt="Feeding event" width="100" height="75" class="img-thumbnail">`;
+                                } catch(e) {
+                                    console.error("Error creating image HTML:", e);
+                                    imageHtml = 'Image error';
+                                }
+                            }
+                            
+                            row.innerHTML = `
+                                <td class="feeding-time">${localTime}</td>
+                                <td>${event.type || 'unknown'}</td>
+                                <td>${confidenceValue.toFixed(2)}</td>
+                                <td>${imageHtml}</td>
+                            `;
+                            tableBody.appendChild(row);
+                        } catch(e) {
+                            console.error(`Error processing event row ${index}:`, e);
+                        }
                     });
+                    console.log("Table updated successfully");
+                } else {
+                    console.log("No events to display in table or table body not found");
                 }
                 
-                // Update chart if it exists
                 if (window.feedingChart && data.timestamps && data.confidences) {
-                    // Convert timestamps to local time and sort the data
+                    console.log("Updating chart with new data");
                     const chartData = data.timestamps.map((isoTime, index) => {
-                        // Create a date from ISO string with timezone
                         const date = new Date(isoTime);
                         
                         return {
@@ -413,12 +456,14 @@
                         };
                     });
                     
-                    // Sort by the timestamp value (milliseconds)
                     chartData.sort((a, b) => a.timeValue - b.timeValue);
                     
                     window.feedingChart.data.labels = chartData.map(d => d.displayTime);
                     window.feedingChart.data.datasets[0].data = chartData.map(d => d.confidence);
                     window.feedingChart.update();
+                    console.log("Chart updated successfully");
+                } else {
+                    console.log("Chart not available or no data for chart");
                 }
             })
             .catch(error => {

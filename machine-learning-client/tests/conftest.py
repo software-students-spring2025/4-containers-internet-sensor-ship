@@ -1,39 +1,69 @@
-import pytest
-from src.app import create_app
 from unittest.mock import MagicMock, patch
-from datetime import datetime
+import sys
+import numpy as np
+
+import pytest
+
+def mock_module(name):
+    if name not in sys.modules:
+        sys.modules[name] = MagicMock()
+    return sys.modules[name]
+
+mock_module('cv2')
+mock_module('pymongo')
+mock_module('tensorflow')
+mock_module('tensorflow.keras')
+mock_module('tensorflow.keras.models')
+mock_module('dotenv')
+mock_module('python-dotenv')
+
+dotenv = mock_module('dotenv')
+dotenv.load_dotenv = MagicMock()
+
 from src.app import create_app
 
 
 @pytest.fixture
-def mock_mongo():
-    with patch("pymongo.MongoClient") as mock:
-        mock_db = MagicMock()
-        mock_collection = MagicMock()
-        mock_db.__getitem__.return_value = mock_collection
-        mock.return_value.__getitem__.return_value = mock_db
-        yield mock
+def mock_mongo_module():
+    """Mock the MongoDB module to prevent actual connections"""
+    mock = MagicMock()
+    return mock
 
 
 @pytest.fixture
-def mock_camera():
-    with patch("cv2.VideoCapture") as mock:
-        mock_cam = MagicMock()
-        mock_cam.read.return_value = (True, None)
-        mock.return_value = mock_cam
-        yield mock
+def mock_camera_module():
+    """Mock OpenCV camera functions"""
+    mock = MagicMock()
+    return mock
 
 
 @pytest.fixture
-def mock_model():
-    with patch("tensorflow.keras.models.load_model") as mock:
-        mock_model = MagicMock()
-        mock_model.predict.return_value = [[0.8]]  # Simulate cat detection
-        mock.return_value = mock_model
-        yield mock
+def mock_model_fixture():
+    """Mock ML model to prevent actual loading"""
+    mock = MagicMock()
+    return mock
 
-# A boilerplate fixture for creating a testable app
+
 @pytest.fixture
-def app():
+def test_app_module():
+    """Create a testable app instance"""
+    from src.app import create_app
     app = create_app()
+    app.config.update({"TESTING": True})
     return app
+
+
+@pytest.fixture
+def client(test_app_module):
+    """Create a test client for the application"""
+    with test_app_module.test_client() as client:
+        yield client
+
+
+@pytest.fixture
+def db_mock():
+    """Mock database for direct client_blueprint testing"""
+    mock_db = MagicMock()
+    mock_collection = MagicMock()
+    mock_db.feeding_events = mock_collection
+    return mock_db
