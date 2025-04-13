@@ -26,9 +26,9 @@ jobs:
           cd ${{ matrix.subdir }}
           # Make sure tomli is installed for pylint
           pipenv install tomli --dev
-          pipenv run pylint **/*.py
+          pipenv run pylint src/**/*.py
       - name: Format with black
         if: ${{ hashFiles(format('{0}/**/*.py', matrix.subdir)) != '' }}
         run: |
           cd ${{ matrix.subdir }}
-          pipenv run black --diff --check .
+          pipenv run black --diff --check ./src
